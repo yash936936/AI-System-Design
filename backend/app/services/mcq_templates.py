@@ -1,0 +1,322 @@
+"""
+Static MCQ templates for HLD and LLD.
+Zero Gemini API calls — these are hardcoded templates.
+The design_type determines which template is served.
+"""
+from app.schemas.schemas import MCQTemplate, MCQCategory, MCQOption
+
+HLD_TEMPLATE = MCQTemplate(
+    design_type="hld",
+    categories=[
+        MCQCategory(
+            id="functional",
+            label="1. Functional Requirements",
+            question="What are the core features your system needs? (select all that apply)",
+            type="multi_select",
+            options=[
+                MCQOption(id="user_auth", label="User authentication / registration"),
+                MCQOption(id="post_content", label="Create / post content"),
+                MCQOption(id="feed_timeline", label="Feed or timeline"),
+                MCQOption(id="search", label="Search"),
+                MCQOption(id="notifications", label="Notifications"),
+                MCQOption(id="messaging", label="Direct messaging / chat"),
+                MCQOption(id="media_upload", label="Media upload (images / video)"),
+                MCQOption(id="payments", label="Payments / transactions"),
+                MCQOption(id="analytics", label="Analytics / reporting"),
+                MCQOption(id="recommendations", label="Recommendations / ML ranking"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Any other feature not listed above…",
+        ),
+        MCQCategory(
+            id="actors",
+            label="1b. Users & Actors",
+            question="Who are the primary actors in your system?",
+            type="multi_select",
+            options=[
+                MCQOption(id="end_user", label="End users (consumers)"),
+                MCQOption(id="admin", label="Admins / operators"),
+                MCQOption(id="api_consumer", label="External API consumers"),
+                MCQOption(id="internal_service", label="Internal microservices"),
+                MCQOption(id="third_party", label="Third-party integrations"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Other actor…",
+        ),
+        MCQCategory(
+            id="nfr_scale",
+            label="2. Non-Functional — Scale",
+            question="What is your expected total user base?",
+            type="single_select",
+            options=[
+                MCQOption(id="tiny", label="< 10K users"),
+                MCQOption(id="small", label="10K – 1M users"),
+                MCQOption(id="medium", label="1M – 100M users"),
+                MCQOption(id="large", label="100M+ users"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="nfr_rw",
+            label="2b. Non-Functional — Read/Write Ratio",
+            question="What is the expected read/write ratio?",
+            type="single_select",
+            options=[
+                MCQOption(id="read_heavy", label="Read-heavy (10:1 or more)"),
+                MCQOption(id="balanced", label="Roughly balanced (1:1 – 3:1)"),
+                MCQOption(id="write_heavy", label="Write-heavy"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="nfr_availability",
+            label="2c. Non-Functional — Availability & Consistency",
+            question="What availability SLA do you need?",
+            type="single_select",
+            options=[
+                MCQOption(id="99_9", label="99.9% (8.7 hrs downtime/yr)"),
+                MCQOption(id="99_99", label="99.99% (52 min downtime/yr)"),
+                MCQOption(id="99_999", label="99.999% (5 min downtime/yr)"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="consistency",
+            label="2d. Consistency Model",
+            question="Does your system require strong consistency, or is eventual consistency acceptable?",
+            type="single_select",
+            options=[
+                MCQOption(id="strong", label="Strong consistency (reads always see latest write)"),
+                MCQOption(id="eventual", label="Eventual consistency (acceptable lag, e.g. social feeds)"),
+                MCQOption(id="mixed", label="Mixed — strong for some features, eventual for others"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Describe your consistency requirements…",
+        ),
+        MCQCategory(
+            id="capacity",
+            label="3. Capacity Estimation",
+            question="What is your expected Daily Active Users (DAU)?",
+            type="single_select",
+            options=[
+                MCQOption(id="dau_1k", label="< 1K DAU"),
+                MCQOption(id="dau_100k", label="1K – 100K DAU"),
+                MCQOption(id="dau_10m", label="100K – 10M DAU"),
+                MCQOption(id="dau_plus", label="10M+ DAU"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Specific DAU number (e.g. 50M)…",
+        ),
+        MCQCategory(
+            id="request_size",
+            label="3b. Average Request / Object Size",
+            question="What is the typical size of data exchanged per request?",
+            type="single_select",
+            options=[
+                MCQOption(id="tiny", label="< 1KB (text, metadata)"),
+                MCQOption(id="small", label="1KB – 100KB (structured data, JSON)"),
+                MCQOption(id="medium", label="100KB – 10MB (images, documents)"),
+                MCQOption(id="large", label="> 10MB (video, large files)"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="data_model",
+            label="4. Data Modeling",
+            question="What are your data storage preferences?",
+            type="single_select",
+            options=[
+                MCQOption(id="sql", label="SQL / Relational (need joins, transactions, ACID)"),
+                MCQOption(id="nosql", label="NoSQL (flexible schema, high throughput, scale-out)"),
+                MCQOption(id="mixed", label="Mixed — SQL for some, NoSQL for others"),
+                MCQOption(id="unsure", label="Not sure — let the AI decide based on requirements"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Any specific DB in mind (e.g. Cassandra, DynamoDB)?",
+        ),
+        MCQCategory(
+            id="api_style",
+            label="5. API Design",
+            question="What API style do you prefer?",
+            type="single_select",
+            options=[
+                MCQOption(id="rest", label="REST"),
+                MCQOption(id="graphql", label="GraphQL"),
+                MCQOption(id="grpc", label="gRPC"),
+                MCQOption(id="mixed", label="Mixed (e.g. REST public + gRPC internal)"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="architecture",
+            label="6. Architecture Approach",
+            question="What architecture approach fits your team and scale?",
+            type="single_select",
+            options=[
+                MCQOption(id="monolith", label="Monolith (simpler, faster to build, single deploy)"),
+                MCQOption(id="microservices", label="Microservices (independent scaling, more ops overhead)"),
+                MCQOption(id="modular_monolith", label="Modular monolith (monolith now, split later)"),
+                MCQOption(id="serverless", label="Serverless / event-driven"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="bottleneck",
+            label="7. Bottleneck Focus",
+            question="Which part of the system do you expect to be the hardest to scale? (select all that apply)",
+            type="multi_select",
+            options=[
+                MCQOption(id="db_writes", label="Database write throughput"),
+                MCQOption(id="db_reads", label="Database read throughput / query latency"),
+                MCQOption(id="fanout", label="Fan-out (e.g. timeline, notification delivery)"),
+                MCQOption(id="media_storage", label="Media / file storage at scale"),
+                MCQOption(id="search_index", label="Search / indexing"),
+                MCQOption(id="hot_keys", label="Hot keys / hot partitions"),
+                MCQOption(id="auth", label="Authentication at scale"),
+                MCQOption(id="real_time", label="Real-time delivery (WebSockets, SSE)"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Other bottleneck concern…",
+        ),
+        MCQCategory(
+            id="scalability",
+            label="8. Scalability Priority",
+            question="How do you expect load to grow?",
+            type="single_select",
+            options=[
+                MCQOption(id="gradual", label="Gradual, predictable growth"),
+                MCQOption(id="spiky", label="Unpredictable spikes (flash sales, viral events)"),
+                MCQOption(id="global", label="Global multi-region from day one"),
+                MCQOption(id="startup", label="Start small, scale when needed"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="tradeoffs",
+            label="9. Trade-off Priorities",
+            question="What do you optimise for? (rank by priority — pick top 2)",
+            type="multi_select",
+            options=[
+                MCQOption(id="availability", label="Availability over consistency (AP system)"),
+                MCQOption(id="consistency", label="Consistency over availability (CP system)"),
+                MCQOption(id="low_latency", label="Low latency over throughput"),
+                MCQOption(id="throughput", label="High throughput over low latency"),
+                MCQOption(id="cost", label="Cost efficiency over performance"),
+                MCQOption(id="simplicity", label="Simplicity over flexibility"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Any other trade-off to highlight?",
+        ),
+    ]
+)
+
+
+LLD_TEMPLATE = MCQTemplate(
+    design_type="lld",
+    categories=[
+        MCQCategory(
+            id="component_focus",
+            label="1. Component to Design",
+            question="Which component are you designing in detail?",
+            type="single_select",
+            options=[
+                MCQOption(id="rate_limiter", label="Rate limiter"),
+                MCQOption(id="cache", label="Distributed cache"),
+                MCQOption(id="message_queue", label="Message queue / task queue"),
+                MCQOption(id="auth_service", label="Auth / token service"),
+                MCQOption(id="search_engine", label="Search indexer / query engine"),
+                MCQOption(id="scheduler", label="Job scheduler / cron service"),
+                MCQOption(id="notification", label="Notification service"),
+                MCQOption(id="file_storage", label="File / blob storage service"),
+                MCQOption(id="api_gateway", label="API gateway"),
+                MCQOption(id="custom", label="Other (describe below)"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Describe the component if not listed…",
+        ),
+        MCQCategory(
+            id="functional",
+            label="1b. Core Operations",
+            question="What operations must the component support? (select all that apply)",
+            type="multi_select",
+            options=[
+                MCQOption(id="read", label="Read / Get"),
+                MCQOption(id="write", label="Write / Set / Create"),
+                MCQOption(id="delete", label="Delete / Evict / Expire"),
+                MCQOption(id="update", label="Update / Modify"),
+                MCQOption(id="list", label="List / Scan"),
+                MCQOption(id="subscribe", label="Subscribe / Listen (event-driven)"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Other operation?",
+        ),
+        MCQCategory(
+            id="capacity",
+            label="3. Capacity",
+            question="Expected throughput for this component?",
+            type="single_select",
+            options=[
+                MCQOption(id="low", label="< 1K QPS"),
+                MCQOption(id="medium", label="1K – 100K QPS"),
+                MCQOption(id="high", label="100K – 1M QPS"),
+                MCQOption(id="ultra", label="> 1M QPS"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Specific QPS target?",
+        ),
+        MCQCategory(
+            id="data_model",
+            label="4. Data Structures",
+            question="What data structure best models your component's storage?",
+            type="single_select",
+            options=[
+                MCQOption(id="hash_map", label="Hash map / key-value"),
+                MCQOption(id="sorted_set", label="Sorted set / priority queue"),
+                MCQOption(id="linked_list", label="Linked list (LRU eviction, queues)"),
+                MCQOption(id="b_tree", label="B-tree (ordered DB index)"),
+                MCQOption(id="trie", label="Trie (prefix search, autocomplete)"),
+                MCQOption(id="graph", label="Graph (social network, recommendations)"),
+                MCQOption(id="bloom_filter", label="Bloom filter (membership test)"),
+                MCQOption(id="unsure", label="Not sure — let the AI choose"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="api_style",
+            label="5. Interface / API",
+            question="How will callers interact with this component?",
+            type="single_select",
+            options=[
+                MCQOption(id="rest", label="REST HTTP"),
+                MCQOption(id="grpc", label="gRPC"),
+                MCQOption(id="library", label="In-process library / SDK"),
+                MCQOption(id="cli", label="CLI tool"),
+                MCQOption(id="event", label="Event / message-based"),
+            ],
+            allow_free_text=False,
+        ),
+        MCQCategory(
+            id="bottleneck",
+            label="7. Hardest Problem",
+            question="What is the hardest problem in this component?",
+            type="multi_select",
+            options=[
+                MCQOption(id="concurrency", label="Concurrency / thread safety"),
+                MCQOption(id="eviction", label="Eviction policy (LRU, LFU, TTL)"),
+                MCQOption(id="consistency", label="Consistency across nodes / replicas"),
+                MCQOption(id="ordering", label="Message ordering / deduplication"),
+                MCQOption(id="failure", label="Failure handling / retries"),
+                MCQOption(id="hot_key", label="Hot key problem"),
+                MCQOption(id="latency", label="Tail latency / P99 optimisation"),
+            ],
+            allow_free_text=True,
+            free_text_placeholder="Other challenge?",
+        ),
+    ]
+)
+
+
+def get_mcq_template(design_type: str) -> MCQTemplate:
+    if design_type.lower() == "lld":
+        return LLD_TEMPLATE
+    return HLD_TEMPLATE

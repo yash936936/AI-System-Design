@@ -1,0 +1,70 @@
+# =========================
+# System & IDE Files
+# =========================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.tar.gz
+
+# =========================
+# Backend (Python / FastAPI)
+# =========================
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environments
+venv/
+.venv/
+env/
+.env_python/
+ENV/
+
+# Environment variables (Never commit these!)
+backend/.env
+backend/.env.production
+backend/.env.development
+
+# Testing / Profiling / Coverage
+.pytest_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+nosetests.xml
+
+# =========================
+# Frontend (Next.js / Node)
+# =========================
+# Dependencies
+frontend/node_modules/
+node_modules/
+.pnp
+.pnp.js
+
+# Next.js build output
+frontend/.next/
+frontend/out/
+frontend/build/
+
+# Environment variables
+frontend/.env.local
+frontend/.env.development.local
+frontend/.env.test.local
+frontend/.env.production.local
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+frontend/*.log
+
+# Vercel / Deployment
+.vercel
