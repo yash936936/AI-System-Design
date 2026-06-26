@@ -1,3 +1,19 @@
+"""
+Phase B — MCQ routes.
+
+NOTE — Two MCQ systems exist in this codebase:
+  1. GET /api/mcq/{design_type}  (in mcq_templates.py / routes.py)
+     - Static, DB-unaware template. Schema: MCQCategory / MCQTemplate.
+     - Intended for frontend rendering of the question UI before a session exists.
+  2. GET /api/sessions/{id}/mcq/{design_type}  (this file → services/mcq.py)
+     - DB-aware, session-scoped. Schema: MCQQuestion / MCQResponse.
+     - Used to fetch questions tied to an existing session and to submit answers.
+
+These have DIFFERENT response shapes (categories vs questions, different option
+fields). The frontend must call the correct endpoint for each stage of the flow.
+Do NOT mix them up — doing so will cause runtime schema errors.
+"""
+
 from uuid import UUID
 
 from fastapi import APIRouter, Depends, HTTPException, Path
@@ -24,7 +40,6 @@ async def get_questions(
     design_type: str = Path(..., description="HLD or LLD"),
     db: AsyncSession = Depends(get_db),
 ) -> MCQResponse:
-    # FIX: validate design_type at route level before hitting the service
     design_type = design_type.upper()
     if design_type not in VALID_DESIGN_TYPES:
         raise HTTPException(

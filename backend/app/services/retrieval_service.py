@@ -29,12 +29,15 @@ from app.core.gemini import gemini_embed
 from app.db.models import Session as SessionModel, RagRetrieval
 from app.schemas.schemas import RagChunk, RetrievalResponse
 
+from chromadb.api import ClientAPI
+from typing import Optional
+
+
 logger = logging.getLogger(__name__)
 settings = get_settings()
 
 # ── ChromaDB singleton (thread-safe) ─────────────────────────────────────────
-
-_chroma_client: chromadb.Client | None = None
+_chroma_client: Optional[object] = None
 _chroma_lock = threading.Lock()
 
 FAMOUS_SYSTEMS = {

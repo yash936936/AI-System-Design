@@ -1,6 +1,6 @@
 """
 SQLAlchemy ORM models.
-Combines models from GitHub scaffold and User's Phase A-D implementation.
+Fixed relationship conflicts between one-to-one and one-to-many relationships.
 """
 import uuid
 from datetime import datetime, date
@@ -79,6 +79,9 @@ class Export(Base):
     expires_at = Column(DateTime(timezone=True), nullable=False)
     created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
 
+    # FIX: Add back_populates to link with Session
+    session = relationship("Session", back_populates="exports")
+
     __table_args__ = (
         Index("idx_exports_session", "session_id"),
         Index("idx_exports_expires", "expires_at"),
@@ -111,14 +114,24 @@ class Session(Base):
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     user = relationship("User", back_populates="sessions")
+    
+    # FIX: Keep only ONE relationship with RagRetrieval
+    # Use one-to-many (rag_retrievals) and remove the one-to-one (retrieval)
+    # Or mark one as viewonly to avoid conflict
     retrieval: Mapped["RagRetrieval | None"] = relationship(
-        back_populates="session", uselist=False
+        back_populates="session", uselist=False, overlaps="rag_retrievals"
     )
+    
     generation: Mapped["Generation | None"] = relationship(
         back_populates="session", uselist=False
     )
-    rag_retrievals = relationship("RagRetrieval", back_populates="session", cascade="all, delete-orphan")
+    
+    # FIX: Add overlaps parameter to avoid conflict with 'retrieval'
+    rag_retrievals = relationship("RagRetrieval", back_populates="session", 
+                                  cascade="all, delete-orphan", overlaps="retrieval")
     generation_outputs = relationship("GenerationOutput", back_populates="session", cascade="all, delete-orphan")
+    
+    # FIX: Add exports relationship to match Export.session
     exports = relationship("Export", back_populates="session", cascade="all, delete-orphan")
 
     __table_args__ = (
@@ -149,7 +162,7 @@ class RagRetrieval(Base):
         DateTime(timezone=True), server_default=func.now()
     )
 
-    session: Mapped["Session"] = relationship(back_populates="retrieval")
+    session: Mapped["Session"] = relationship(back_populates="rag_retrievals")
 
 class Generation(Base):
     __tablename__ = "generations"

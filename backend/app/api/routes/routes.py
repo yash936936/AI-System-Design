@@ -4,12 +4,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.session import get_db
 from app.schemas.schemas import (
-    ClassifyRequest, ClassifyResponse,
     MCQTemplate,
     CreateSessionRequest, CreateSessionResponse,
     SessionResponse,
 )
-from app.services.classify import classify_prompt
 from app.services.mcq_templates import get_mcq_template
 from app.services.session import create_session, get_session, session_to_response
 
@@ -24,14 +22,9 @@ async def health():
 
 
 # ── Phase A: Classify ──────────────────────────────────────────────────────────
-
-@router.post("/classify", response_model=ClassifyResponse)
-async def classify(request: ClassifyRequest):
-    """
-    Classify a prompt as LLD or HLD.
-    1 Gemini call. Result is cached for 24h.
-    """
-    return await classify_prompt(request.prompt)
+# NOTE: The /classify endpoint has been intentionally removed from this file.
+# It is now handled exclusively by app/api/routes/classify.py to avoid duplicate 
+# route registration and to ensure proper error handling + 201 status codes.
 
 
 # ── Phase B: MCQ Templates ────────────────────────────────────────────────────
@@ -80,7 +73,7 @@ async def get_session_by_id(
     return session_to_response(session)
 
 
-# ── Placeholder routes (activated in later stages) ────────────────────────────
+# ── Placeholder routes (activated in later stages) ───────────────────────────
 
 @router.get("/sessions/{session_id}/retrieve")
 async def retrieve_placeholder(session_id: UUID):

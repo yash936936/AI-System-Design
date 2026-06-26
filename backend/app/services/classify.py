@@ -1,6 +1,7 @@
 """
 Phase A — Intent Classification.
 Merged from GitHub and User implementations.
+FIX: Return all fields expected by the frontend to prevent null reference errors.
 """
 from app.core.gemini import gemini_generate, gemini_generate_json
 from app.schemas.schemas import ClassifyResponse
@@ -41,7 +42,7 @@ async def classify_prompt_gh(prompt: str) -> ClassifyResponse:
 
     data = result["parsed"]
     return ClassifyResponse(
-        session_id=None,  # GitHub version doesn't return session_id
+        session_id=None,
         design_type=data["type"],
         system_name=None,
         confidence=float(data["confidence"]),
@@ -97,10 +98,17 @@ async def classify_prompt(db, req) -> ClassifyResponse:
     db.add(session)
     await db.flush()
 
+    # FIX: Return ALL fields expected by the frontend, including GitHub schema fields
+    # This prevents "Cannot read properties of null" errors in the frontend
+    suggested_correction = "LLD" if design_type == "HLD" else "HLD"
+    
     return ClassifyResponse(
         session_id=session.id,
         design_type=design_type,
-        system_name=system_name,
+        system_name=system_name,  # Can be null, frontend should handle this
         confidence=confidence,
         reasoning=reasoning,
+        # GitHub schema fields (must be present even if duplicated)
+        type=design_type,  # Same as design_type
+        suggested_correction=suggested_correction,  # Never null
     )
