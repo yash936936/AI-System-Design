@@ -5,10 +5,10 @@ from functools import lru_cache
 class Settings(BaseSettings):
     # Gemini
     gemini_api_key: str
-    gemini_model: str = "gemini-1.5-flash"
-    gemini_embed_model: str = "models/text-embedding-004"
-    gemini_max_rpm: int = 14
-    gemini_max_rpd: int = 1400
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_embed_model: str = "models/gemini-embedding-001"
+    gemini_max_rpm: int = 5
+    gemini_max_rpd: int = 18
 
     # Database
     database_url: str
