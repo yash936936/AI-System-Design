@@ -1,8 +1,118 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
+
+@theme {
+  /* ── Lamborghini design system tokens ────────────────────────────── */
+
+  /* Colors */
+  --color-gold: #FFC000;
+  --color-gold-dark: #917300;
+  --color-gold-text: #FFCE3E;
+
+  --color-cyan-pulse: #29ABE2;
+
+  --color-link-blue: #3860BE;
+
+  --color-teal-action: #1EAEDB;
+
+  --color-surface-black: #000000;
+  --color-surface-charcoal: #202020;
+  --color-surface-iron: #181818;
+  --color-surface-overlay: rgba(0, 0, 0, 0.7);
+  --color-surface-fog: rgba(0, 0, 0, 0.5);
+  --color-surface-mist: rgba(0, 0, 0, 0.25);
+  --color-surface-near_white: #F8F8F8;
+  --color-surface-light_mist: #E6E6E6;
+
+  --color-ink-white: #FFFFFF;
+  --color-ink-smoke: #F5F5F5;
+  --color-ink-graphite: #494949;
+  --color-ink-ash: #7D7D7D;
+  --color-ink-steel: #969696;
+  --color-ink-slate: #666666;
+  --color-ink-iron: #555555;
+  --color-ink-shadow: #313131;
+
+  /* Fonts — LamboType is proprietary; Oswald is the closest open
+     condensed Neo-Grotesk substitute (uppercase-forward, angular). */
+  --font-lambo: "Oswald", "Helvetica Neue", Arial, sans-serif;
+
+  /* Type scale */
+  --text-hero: 7.5rem;       /* 120px */
+  --text-hero--line-height: 0.92;
+
+  --text-display: 5rem;      /* 80px */
+  --text-display--line-height: 1.13;
+
+  --text-section: 3.375rem;  /* 54px */
+  --text-section--line-height: 1.19;
+
+  --text-sub: 2.5rem;        /* 40px */
+  --text-sub--line-height: 1.15;
+
+  --text-feature: 1.6875rem; /* 27px */
+  --text-feature--line-height: 1.37;
+
+  --text-cardtitle: 1.5rem;  /* 24px */
+  --text-cardtitle--line-height: 1.3;
+
+  --text-bodylg: 1.125rem;   /* 18px */
+  --text-bodylg--line-height: 1.56;
+
+  --text-body: 1rem;         /* 16px */
+  --text-body--line-height: 1.50;
+
+  --text-btnlg: 1rem;        /* 16px */
+  --text-btnlg--line-height: 1.50;
+
+  --text-btn: 0.9rem;        /* 14.4px */
+  --text-btn--line-height: 1.00;
+  --text-btn--letter-spacing: 0.16px;
+
+  --text-btnsm: 0.8125rem;   /* 13px */
+  --text-btnsm--line-height: 1.20;
+  --text-btnsm--letter-spacing: 0.16px;
+
+  --text-caption: 0.875rem;  /* 14px */
+  --text-caption--line-height: 1.3;
+  --text-caption--letter-spacing: -0.42px;
+
+  --text-label: 0.75rem;     /* 12px */
+  --text-label--line-height: 1.83;
+  --text-label--letter-spacing: 0.96px;
+
+  --text-micro: 0.625rem;    /* 10px */
+  --text-micro--line-height: 1.5;
+  --text-micro--letter-spacing: 0.225px;
+
+  /* Border radius — sharp, angular — non-negotiable */
+  --radius: 0px;             /* DEFAULT → "rounded" */
+  --radius-none: 0px;
+  --radius-sm: 2px;          /* badges only */
+  --radius-switch: 20px;     /* toggle switches only */
+
+  /* Spacing overrides — base-8 scale from the design system */
+  --spacing-0\.5: 2px;
+  --spacing-1: 4px;
+  --spacing-1\.5: 5px;
+  --spacing-2: 8px;
+  --spacing-2\.5: 10px;
+  --spacing-3: 12px;
+  --spacing-3\.5: 15px;
+  --spacing-4: 16px;
+  --spacing-5: 20px;
+  --spacing-6: 24px;
+  --spacing-8: 32px;
+  --spacing-10: 40px;
+  --spacing-12: 48px;
+  --spacing-14: 56px;
+
+  /* Layout */
+  --width-sidebar: 280px;
+  --width-artifact: 440px;
+  --max-width-container: 1440px;
+}
 
 @layer base {
   * {
@@ -14,6 +124,11 @@
   html, body {
     height: 100%;
     overflow: hidden;
+    background-color: #000000;
+  }
+
+  body {
+    font-family: 'Oswald', 'Helvetica Neue', Arial, sans-serif;
   }
 
   ::-webkit-scrollbar {
@@ -23,47 +138,104 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #383838;
-    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
   }
 
-  /* Claude.ai-style selection */
+  /* Lamborghini Gold selection — the only chromatic accent */
   ::selection {
-    background: #cc785c33;
+    background: rgba(255, 192, 0, 0.35);
   }
 }
 
 @layer components {
-  /* Chip base — used in MCQ option chips */
-  .chip {
-    @apply inline-flex items-center px-3 py-1.5 rounded-full text-sm font-medium
-           border border-chip-border bg-chip-bg text-text-primary
-           cursor-pointer select-none transition-all duration-150;
+
+  /* ── Buttons — zero border-radius across the board ─────────────────── */
+
+  /* Gold Accent CTA — primary action ("Discover More", "Generate Design") */
+  .btn-accent {
+    @apply inline-flex items-center justify-center gap-2 bg-gold text-surface-black
+           text-btnlg font-normal uppercase tracking-wide px-6 py-3 rounded-none
+           transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .chip:hover {
-    @apply border-text-secondary;
-  }
-  .chip.selected {
-    @apply border-chip-selected_border bg-chip-selected text-white;
+  .btn-accent:hover:not(:disabled) {
+    @apply bg-gold-dark;
   }
 
-  /* Message bubble */
+  /* Transparent Ghost — secondary CTA on dark backgrounds */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 bg-transparent text-ink-white
+           border border-white/50 text-btn font-light uppercase tracking-wide px-4 py-4
+           rounded-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost:hover:not(:disabled) {
+    @apply bg-teal-action/70 border-teal-action text-ink-white;
+  }
+  .btn-ghost.selected {
+    @apply border-gold text-gold opacity-100;
+  }
+
+  /* Gray Neutral — tertiary action / badge-like button */
+  .btn-gray {
+    @apply inline-flex items-center justify-center gap-2 bg-ink-steel text-surface-charcoal
+           text-btnsm uppercase tracking-wide px-4 py-2.5 rounded-none
+           transition-colors duration-150;
+  }
+
+  /* ── Cards & Surfaces ────────────────────────────────────────────────── */
+
+  .card {
+    @apply bg-surface-charcoal rounded-none;
+  }
+
+  .panel-divider {
+    border-color: #202020;
+  }
+
+  /* ── Badges / Tags ───────────────────────────────────────────────────── */
+
+  .badge {
+    @apply inline-flex items-center bg-ink-steel text-ink-white text-micro
+           uppercase tracking-wide px-2 py-1 rounded-sm;
+  }
+
+  /* ── Labels ──────────────────────────────────────────────────────────── */
+
+  .label-caps {
+    @apply text-label uppercase tracking-wide text-ink-ash;
+  }
+
+  /* ── Inputs ──────────────────────────────────────────────────────────── */
+
+  .input-dark {
+    @apply bg-surface-charcoal border border-white/15 text-ink-white placeholder:text-ink-steel
+           rounded-none px-4 py-3 text-body focus:outline-none focus:border-gold transition-colors duration-150;
+  }
+
+  /* ── Message bubbles ─────────────────────────────────────────────────── */
+
   .msg-user {
-    @apply bg-transparent text-text-primary;
+    @apply bg-surface-charcoal border border-white/15 text-ink-white rounded-none;
   }
   .msg-assistant {
-    @apply bg-bg-message rounded-xl px-4 py-3 text-text-primary;
+    @apply bg-transparent text-ink-white;
   }
 
-  /* Artifact tab */
+  /* ── Hexagon shape — brand geometric DNA ────────────────────────────── */
+
+  .hexagon {
+    clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
+  }
+
+  /* ── Artifact tabs ───────────────────────────────────────────────────── */
+
   .artifact-tab {
-    @apply px-3 py-1.5 text-sm font-medium text-text-secondary rounded-md
-           cursor-pointer transition-colors duration-150;
+    @apply px-4 py-2.5 text-btnsm font-light uppercase tracking-wide text-ink-ash
+           rounded-none cursor-pointer transition-colors duration-150 border-b-2 border-transparent;
   }
   .artifact-tab:hover {
-    @apply text-text-primary bg-bg-hover;
+    @apply text-ink-white;
   }
   .artifact-tab.active {
-    @apply text-text-primary bg-bg-input;
+    @apply text-ink-white border-gold;
   }
 }

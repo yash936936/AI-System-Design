@@ -4,7 +4,7 @@ import ArtifactPanel from "@/components/artifact/ArtifactPanel"
 
 export default function HomePage() {
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-bg-base">
+    <div className="flex h-screen w-screen overflow-hidden bg-surface-black">
       <Sidebar />
       <ChatPanel />
       <ArtifactPanel />

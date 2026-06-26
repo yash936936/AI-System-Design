@@ -91,30 +91,30 @@ export default function ChatPanel() {
   const isEmpty = messages.length === 0
 
   return (
-    <div className="flex-1 flex flex-col h-full min-w-0">
+    <div className="flex-1 flex flex-col h-full min-w-0 bg-surface-black">
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto py-6 space-y-4">
+      <div className="flex-1 overflow-y-auto py-8 space-y-6">
 
-        {/* Empty state */}
+        {/* Empty state — hero, full darkness, gold relief only on accent */}
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-xl font-semibold text-text-primary">
-                What system do you want to design?
+          <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-8">
+            <div className="space-y-4 max-w-2xl">
+              <h1 className="text-sub md:text-section font-normal text-ink-white uppercase">
+                What System Do You Want To Design?
               </h1>
-              <p className="text-sm text-text-secondary max-w-sm">
-                Describe a product or component and I'll guide you through HLD or LLD — with real-world references.
+              <p className="text-body text-ink-ash max-w-md mx-auto">
+                Describe a product or component and I&rsquo;ll guide you through HLD or LLD — with real-world references.
               </p>
             </div>
 
-            {/* Example prompt chips */}
-            <div className="flex flex-wrap gap-2 justify-center max-w-md">
+            {/* Example prompt ghost buttons */}
+            <div className="flex flex-wrap gap-3 justify-center max-w-2xl">
               {EXAMPLE_PROMPTS.map((p) => (
                 <button
                   key={p}
                   onClick={() => setInput(p)}
-                  className="chip text-xs"
+                  className="btn-ghost text-btnsm"
                 >
                   {p}
                 </button>
@@ -132,18 +132,15 @@ export default function ChatPanel() {
           />
         ))}
 
-        {/* Generate button — appears after all MCQ complete */}
+        {/* Generate button — Gold Accent CTA, appears after all MCQ complete */}
         {session.status === "creating" && (
-          <div className="px-4">
+          <div className="px-6">
             <button
               onClick={handleGenerate}
               disabled={isLoading}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl
-                         bg-accent-primary text-white text-sm font-medium
-                         hover:bg-accent-hover disabled:opacity-50
-                         transition-colors duration-150"
+              className="btn-accent"
             >
-              <ZapIcon size={15} />
+              <ZapIcon size={16} />
               Generate Design
             </button>
           </div>
@@ -151,26 +148,26 @@ export default function ChatPanel() {
 
         {/* Loading indicator */}
         {isLoading && (
-          <div className="px-4 flex items-center gap-2 text-sm text-text-muted">
-            <div className="flex gap-1">
+          <div className="px-6 flex items-center gap-3 text-btnsm uppercase tracking-wide text-ink-ash">
+            <div className="flex gap-1.5">
               {[0, 1, 2].map((i) => (
                 <span
                   key={i}
-                  className="w-1.5 h-1.5 rounded-full bg-accent-primary animate-bounce"
+                  className="w-1.5 h-1.5 bg-gold animate-bounce"
                   style={{ animationDelay: `${i * 150}ms` }}
                 />
               ))}
             </div>
-            <span>Thinking…</span>
+            <span>Processing…</span>
           </div>
         )}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar — Claude.ai identical */}
-      <div className="px-4 pb-4 pt-2 border-t border-border-subtle">
-        <div className="relative bg-bg-input rounded-xl border border-border focus-within:border-text-muted transition-colors">
+      {/* Input bar — sharp corners, charcoal surface, gold focus + send */}
+      <div className="px-6 pb-6 pt-3 border-t border-[#202020]">
+        <div className="relative bg-surface-charcoal rounded-none border border-white/15 focus-within:border-gold transition-colors">
           <textarea
             ref={textareaRef}
             value={input}
@@ -184,22 +181,22 @@ export default function ChatPanel() {
             placeholder="Describe a system to design…"
             rows={1}
             disabled={isLoading || (session.status !== "idle" && session.status !== "error")}
-            className="w-full bg-transparent resize-none px-4 py-3 pr-12
-                       text-sm text-text-primary placeholder:text-text-muted
+            className="w-full bg-transparent resize-none px-4 py-4 pr-14
+                       text-body text-ink-white placeholder:text-ink-steel
                        focus:outline-none disabled:opacity-40 max-h-40"
           />
           <button
             onClick={handleSubmit}
             disabled={!input.trim() || isLoading}
-            className="absolute right-3 bottom-3 p-1.5 rounded-lg
-                       bg-accent-primary text-white hover:bg-accent-hover
+            className="absolute right-3 bottom-3 p-2 rounded-none
+                       bg-gold text-surface-black hover:bg-gold-dark
                        disabled:opacity-30 disabled:cursor-not-allowed
-                       transition-all duration-150"
+                       transition-colors duration-150"
           >
-            <SendHorizontalIcon size={14} />
+            <SendHorizontalIcon size={15} />
           </button>
         </div>
-        <p className="text-xs text-text-muted text-center mt-2">
+        <p className="text-micro uppercase tracking-wide text-ink-steel text-center mt-3">
           Shift+Enter for new line · Enter to send
         </p>
       </div>
