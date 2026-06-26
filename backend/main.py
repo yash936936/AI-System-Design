@@ -1,8 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import classify, mcq, retrieval, generation
-from app.api.routes.routes import router as gh_router  # Re-added safely
+# Import all routers including the new Phase C routers
+from app.api.routes import classify, mcq, retrieval, generation, famous
+from app.api.routes.routes import router as gh_router
 
 app = FastAPI(title="SysDesign AI", version="2.0.0")
 
@@ -14,15 +15,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include the GitHub scaffold router (now safe, no duplicate /classify)
-app.include_router(gh_router)
-
-# Include Phase A-D routers
+# Order matters! Specific routers first, generic placeholders last.
 app.include_router(classify.router)
 app.include_router(mcq.router)
-app.include_router(retrieval.router)
+app.include_router(retrieval.router) # Phase C
+app.include_router(famous.router)   # Phase C
 app.include_router(generation.router)
-
+app.include_router(gh_router)       # Contains Stage 4+ placeholders
 
 @app.get("/health")
 async def health():
