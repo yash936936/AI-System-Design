@@ -1,69 +1,59 @@
 """
-Phase B — MCQ routes.
-
-NOTE — Two MCQ systems exist in this codebase:
-  1. GET /api/mcq/{design_type}  (in mcq_templates.py / routes.py)
-     - Static, DB-unaware template. Schema: MCQCategory / MCQTemplate.
-     - Intended for frontend rendering of the question UI before a session exists.
-  2. GET /api/sessions/{id}/mcq/{design_type}  (this file → services/mcq.py)
-     - DB-aware, session-scoped. Schema: MCQQuestion / MCQResponse.
-     - Used to fetch questions tied to an existing session and to submit answers.
-
-These have DIFFERENT response shapes (categories vs questions, different option
-fields). The frontend must call the correct endpoint for each stage of the flow.
-Do NOT mix them up — doing so will cause runtime schema errors.
+Phase B — MCQ Route
+====================
+GET /api/mcq/{design_type}
 """
+import logging
 
-from uuid import UUID
+from fastapi import APIRouter, HTTPException, status
 
-from fastapi import APIRouter, Depends, HTTPException, Path
-from sqlalchemy.ext.asyncio import AsyncSession
+from app.schemas.schemas import MCQTemplate, ErrorResponse
+from app.services.mcq_templates import get_template
 
-from app.db.session import get_db
-from app.schemas.schemas import (
-    MCQResponse,
-    MCQSubmitRequest,
-    MCQSubmitResponse,
-    VALID_DESIGN_TYPES,
-)
-from app.services.mcq import get_mcq, submit_mcq
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api", tags=["Phase B — MCQ"])
 
 
 @router.get(
-    "/sessions/{session_id}/mcq/{design_type}",
-    response_model=MCQResponse,
+    "/mcq/{design_type}",
+    response_model=MCQTemplate,
+    responses={
+        400: {"model": ErrorResponse},
+        404: {"model": ErrorResponse},
+    },
+    summary="Get MCQ template",
+    description="Returns the MCQ template for a specific design type (HLD or LLD).",
 )
-async def get_questions(
-    session_id: UUID,
-    design_type: str = Path(..., description="HLD or LLD"),
-    db: AsyncSession = Depends(get_db),
-) -> MCQResponse:
-    design_type = design_type.upper()
-    if design_type not in VALID_DESIGN_TYPES:
+async def get_mcq_template(design_type: str) -> MCQTemplate:
+    """
+    Get MCQ template for a design type.
+    
+    Args:
+        design_type: 'hld' or 'lld' (case-insensitive)
+        
+    Returns:
+        MCQ template with categories and questions
+    """
+    try:
+        template = get_template(design_type.upper())
+        return MCQTemplate(**template)
+    except ValueError as e:
         raise HTTPException(
-            status_code=422,
-            detail=f"design_type must be one of {sorted(VALID_DESIGN_TYPES)}",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail={
+                "error": f"Invalid design type: {design_type}",
+                "error_code": "INVALID_DESIGN_TYPE",
+                "detail": str(e),
+            },
         )
-    try:
-        return await get_mcq(db, session_id, design_type)
-    except ValueError as e:
-        raise HTTPException(status_code=404, detail=str(e))
-
-
-@router.post(
-    "/sessions/{session_id}/mcq",
-    response_model=MCQSubmitResponse,
-    status_code=200,
-)
-async def submit_answers(
-    session_id: UUID,
-    req: MCQSubmitRequest,
-    db: AsyncSession = Depends(get_db),
-) -> MCQSubmitResponse:
-    try:
-        return await submit_mcq(db, session_id, req)
-    except ValueError as e:
-        status = 409 if "status" in str(e) else 404
-        raise HTTPException(status_code=status, detail=str(e))
+    except Exception as e:
+        logger.exception("Failed to get MCQ template")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail={
+                "error": "Failed to get MCQ template",
+                "error_code": "TEMPLATE_FETCH_FAILED",
+                "detail": str(e),
+            },
+        )

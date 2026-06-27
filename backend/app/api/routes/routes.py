@@ -12,6 +12,7 @@ from app.schemas.schemas import (
 from app.services.mcq_templates import get_mcq_template
 from app.services.session import create_session, get_session, session_to_response
 
+router = APIRouter(tags=["Misc"])
 router = APIRouter(prefix="/api")
 
 # ── Phase B: MCQ Templates ──────────────────────────────────────────────────
@@ -74,4 +75,13 @@ async def stream_placeholder(session_id: UUID):
     return {
         "message": "Generation pipeline activates in Stage 4", 
         "session_id": str(session_id)
+    }
+
+@router.get("/api/placeholder/{stage}")
+async def placeholder(stage: str):
+    """Placeholder endpoint for future stages."""
+    return {
+        "stage": stage,
+        "message": "This endpoint is a placeholder for Phase 5+",
+        "status": "not_implemented",
     }

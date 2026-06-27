@@ -1,27 +1,52 @@
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from app.db.session import get_db
-from app.db.models import FamousDesign
-from app.schemas.schemas import FamousDesignResponse
+"""
+Phase C — Famous Systems Route
+================================
+GET /api/famous
+GET /api/famous/{slug}
+"""
+import logging
+from typing import List
 
-router = APIRouter(prefix="/api", tags=["Phase C — Famous Designs"])
+from fastapi import APIRouter, HTTPException, status
 
-@router.get("/famous/{system_name}", response_model=FamousDesignResponse)
-async def get_famous_design(system_name: str, db: AsyncSession = Depends(get_db)):
-    system_name = system_name.lower().strip()
-    result = await db.execute(select(FamousDesign).where(FamousDesign.system_name == system_name))
-    design = result.scalar_one_or_none()
-    
-    if not design:
-        raise HTTPException(status_code=404, detail=f"Design '{system_name}' not found")
+from app.schemas.schemas import FamousSystemSchema, ErrorResponse
+from app.services.retrieval import list_famous_systems, get_famous_system
 
-    return FamousDesignResponse(
-        system=design.system_name,
-        title=design.title,
-        last_updated=design.last_updated.isoformat(),
-        diagram=design.diagram_json,
-        sections=design.canonical_json,
-        key_insights=design.key_insights,
-        sources=design.sources,
-    )
+logger = logging.getLogger(__name__)
+
+router = APIRouter(prefix="/api", tags=["Phase C — Famous Systems"])
+
+
+@router.get(
+    "/famous",
+    response_model=List[FamousSystemSchema],
+    summary="List famous systems",
+    description="Returns all famous system designs available as reference.",
+)
+async def list_famous() -> List[FamousSystemSchema]:
+    """List all famous systems."""
+    systems = list_famous_systems()
+    return [FamousSystemSchema(**s) for s in systems]
+
+
+@router.get(
+    "/famous/{slug}",
+    response_model=FamousSystemSchema,
+    responses={
+        404: {"model": ErrorResponse},
+    },
+    summary="Get famous system",
+    description="Returns a specific famous system design by slug.",
+)
+async def get_famous(slug: str) -> FamousSystemSchema:
+    """Get a specific famous system by slug."""
+    system = get_famous_system(slug)
+    if not system:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail={
+                "error": f"Famous system not found: {slug}",
+                "error_code": "FAMOUS_NOT_FOUND",
+            },
+        )
+    return FamousSystemSchema(**system)

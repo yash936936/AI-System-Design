@@ -1,168 +1,278 @@
 "use client"
-import { clsx } from "clsx"
-import { XIcon, LayoutIcon, ActivityIcon, DatabaseIcon, CodeIcon, LayersIcon } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import type { ArtifactTab } from "@/types"
 
-const TABS: { id: ArtifactTab; label: string; icon: React.ReactNode }[] = [
-  { id: "diagram",    label: "Diagram",     icon: <LayoutIcon size={13} /> },
-  { id: "capacity",   label: "Capacity",    icon: <ActivityIcon size={13} /> },
-  { id: "data_model", label: "Data Model",  icon: <DatabaseIcon size={13} /> },
-  { id: "api",        label: "API",         icon: <CodeIcon size={13} /> },
-  { id: "stack",      label: "Stack",       icon: <LayersIcon size={13} /> },
-  { id: "sources",    label: "Sources",     icon: <ActivityIcon size={13} /> },
+const TABS: { id: ArtifactTab; label: string; icon: string }[] = [
+  { id: "diagram", label: "Diagram", icon: "◈" },
+  { id: "capacity", label: "Capacity", icon: "⚡" },
+  { id: "data_model", label: "Data Model", icon: "⬡" },
+  { id: "api", label: "API", icon: "⟷" },
+  { id: "stack", label: "Stack", icon: "⎔" },
 ]
 
-function EmptyTab({ label }: { label: string }) {
-  return (
-    <div className="flex flex-col items-center justify-center h-full text-center px-6 space-y-2">
-      <p className="text-body text-ink-white uppercase tracking-wide">{label}</p>
-      <p className="text-micro uppercase tracking-wide text-ink-steel">Available after generation completes (Stage 4)</p>
-    </div>
-  )
-}
-
 export default function ArtifactPanel() {
-  const { artifact, setArtifactTab, setArtifactVisible } = useStore()
+  const { artifact, setArtifactTab } = useStore()
 
   if (!artifact.isVisible) return null
 
   return (
-    <aside className="w-artifact flex flex-col h-full bg-surface-black border-l border-[#202020] shrink-0">
-
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 border-b border-[#202020]">
-        <span className="text-body font-medium text-ink-white uppercase tracking-wide">Design Output</span>
-        <button
-          onClick={() => setArtifactVisible(false)}
-          className="p-1 text-ink-steel hover:text-ink-white transition-colors"
-        >
-          <XIcon size={15} />
-        </button>
-      </div>
-
-      {/* Tab bar — sharp underline tabs, gold active state */}
-      <div className="flex gap-1 px-3 border-b border-[#202020] overflow-x-auto">
+    <div className="w-[480px] h-full bg-ink-black border-l border-ink-graphite flex flex-col">
+      {/* Tab bar */}
+      <div className="flex border-b border-ink-graphite">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setArtifactTab(tab.id)}
-            className={clsx("artifact-tab flex items-center gap-1.5 whitespace-nowrap", {
-              active: artifact.activeTab === tab.id,
-            })}
+            className={`flex-1 py-3 px-2 text-xs font-mono uppercase tracking-wider transition-colors ${
+              artifact.activeTab === tab.id
+                ? "text-gold border-b-2 border-gold bg-ink-charcoal"
+                : "text-ink-steel hover:text-ink-ash"
+            }`}
           >
-            {tab.icon}
+            <span className="mr-1">{tab.icon}</span>
             {tab.label}
           </button>
         ))}
       </div>
 
-      {/* Tab content */}
-      <div className="flex-1 overflow-y-auto">
-        {artifact.activeTab === "diagram" && (
-          artifact.diagram
-            ? <DiagramView data={artifact.diagram} />
-            : <EmptyTab label="Architecture Diagram" />
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {artifact.activeTab === "diagram" && artifact.diagram && (
+          <DiagramView data={artifact.diagram} />
         )}
-        {artifact.activeTab === "capacity" && (
-          artifact.capacity
-            ? <JsonView data={artifact.capacity} />
-            : <EmptyTab label="Capacity Estimation" />
+        {artifact.activeTab === "capacity" && artifact.capacity && (
+          <CapacityView data={artifact.capacity} />
         )}
-        {artifact.activeTab === "data_model" && (
-          artifact.data_model
-            ? <JsonView data={artifact.data_model} />
-            : <EmptyTab label="Data Model" />
+        {artifact.activeTab === "data_model" && artifact.data_model && (
+          <DataModelView data={artifact.data_model} />
         )}
-        {artifact.activeTab === "api" && (
-          artifact.api_design
-            ? <JsonView data={artifact.api_design} />
-            : <EmptyTab label="API Design" />
+        {artifact.activeTab === "api" && artifact.api && (
+          <ApiView data={artifact.api} />
         )}
-        {artifact.activeTab === "stack" && (
-          artifact.stack
-            ? <JsonView data={artifact.stack} />
-            : <EmptyTab label="Tech Stack" />
+        {artifact.activeTab === "stack" && artifact.stack && (
+          <StackView data={artifact.stack} />
         )}
-        {artifact.activeTab === "sources" && (
-          artifact.sources
-            ? <SourcesView chunks={artifact.sources} />
-            : <EmptyTab label="RAG Sources" />
+        {!artifact[artifact.activeTab] && (
+          <div className="text-ink-steel text-sm">
+            Waiting for generation…
+          </div>
         )}
       </div>
-    </aside>
-  )
-}
-
-// ── Sub-views ─────────────────────────────────────────────────────────────────
-
-function DiagramView({ data }: { data: { components: unknown[] } }) {
-  return (
-    <div className="p-4 space-y-2.5">
-      <p className="text-micro uppercase tracking-wide text-ink-steel">{data.components.length} components</p>
-      {(data.components as Array<{ id: string; name: string; type: string; description: string }>).map((c) => (
-        <div key={c.id} className="card border border-white/10 px-3.5 py-3 space-y-1">
-          <div className="flex items-center gap-2.5">
-            <span className={clsx("w-2 h-2", componentColor(c.type))} />
-            <span className="text-body font-medium text-ink-white">{c.name}</span>
-            <span className="text-micro uppercase tracking-wide text-ink-steel ml-auto">{c.type}</span>
-          </div>
-          <p className="text-btnsm text-ink-ash pl-4">{c.description}</p>
-        </div>
-      ))}
-      <p className="text-micro uppercase tracking-wide text-ink-steel pt-2">
-        Interactive React Flow diagram activates in Stage 4
-      </p>
     </div>
   )
 }
 
-function JsonView({ data }: { data: Record<string, unknown> }) {
-  return (
-    <pre className="p-4 text-btnsm text-ink-ash font-mono whitespace-pre-wrap leading-relaxed">
-      {JSON.stringify(data, null, 2)}
-    </pre>
-  )
-}
+// ── Diagram View ──────────────────────────────────────────────────────────────
 
-function SourcesView({ chunks }: { chunks: Array<{ id: string; source: string; section: string; text: string; score: number }> }) {
-  return (
-    <div className="p-4 space-y-3">
-      {chunks.map((chunk) => (
-        <div key={chunk.id} className="card border border-white/10 p-3.5 space-y-2">
-          <div className="flex items-center justify-between">
-            <span className="text-btnsm font-medium text-ink-white">{chunk.source}</span>
-            <span className="badge">{Math.round(chunk.score * 100)}% match</span>
-          </div>
-          <p className="text-micro uppercase tracking-wide text-ink-steel">{chunk.section}</p>
-          <div className="w-full h-1 bg-white/10">
-            <div
-              className="h-1 bg-gold"
-              style={{ width: `${chunk.score * 100}%` }}
-            />
-          </div>
-          <p className="text-btnsm text-ink-ash line-clamp-3">{chunk.text}</p>
-        </div>
-      ))}
-    </div>
-  )
-}
-
-// Component-type dots kept inside the documented palette (gold/cyan/link-blue
-// plus the achromatic ink ramp) instead of an arbitrary rainbow, per the
-// "no additional accent colors beyond gold" rule in the design system.
 function componentColor(type: string): string {
   const map: Record<string, string> = {
-    frontend:    "bg-ink-white",
-    backend:     "bg-cyan-pulse",
-    database:    "bg-gold",
-    queue:       "bg-ink-steel",
-    cache:       "bg-ink-ash",
-    cdn:         "bg-ink-graphite",
-    auth:        "bg-gold-text",
-    storage:     "bg-ink-smoke",
+    frontend: "bg-ink-white",
+    backend: "bg-cyan-pulse",
+    database: "bg-gold",
+    queue: "bg-ink-steel",
+    cache: "bg-ink-ash",
+    cdn: "bg-ink-graphite",
+    auth: "bg-gold-text",
+    storage: "bg-ink-smoke",
     third_party: "bg-ink-slate",
-    ai:          "bg-link-blue",
+    ai: "bg-link-blue",
   }
   return map[type] ?? "bg-ink-steel"
+}
+
+function DiagramView({ data }: { data: { components: any[] } }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gold font-mono text-sm uppercase tracking-wider">
+        Architecture Components
+      </h2>
+      <p className="text-ink-steel text-xs">
+        {data.components.length} components
+      </p>
+      <div className="space-y-3">
+        {data.components.map((c) => (
+          <div key={c.id} className="bg-ink-charcoal border border-ink-graphite p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <div className={`w-2 h-2 rounded-full ${componentColor(c.type)}`} />
+              <span className="text-ink-white text-sm font-mono">{c.name}</span>
+              <span className="text-ink-steel text-xs ml-auto">{c.type}</span>
+            </div>
+            <p className="text-ink-ash text-xs">{c.description}</p>
+            <div className="mt-2 flex flex-wrap gap-1">
+              {c.connections?.map((conn: string) => (
+                <span key={conn} className="text-[10px] bg-ink-graphite text-ink-steel px-1.5 py-0.5">
+                  → {conn}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Capacity View ─────────────────────────────────────────────────────────────
+
+function CapacityView({ data }: { data: any }) {
+  const metrics = [
+    { label: "DAU", value: data.dau?.toLocaleString(), unit: "" },
+    { label: "Peak Read QPS", value: data.peak_read_qps?.toLocaleString(), unit: "req/s" },
+    { label: "Peak Write QPS", value: data.peak_write_qps?.toLocaleString(), unit: "req/s" },
+    { label: "Daily Storage", value: data.daily_storage_gb, unit: "GB" },
+    { label: "5-Year Storage", value: data.five_year_storage_tb, unit: "TB" },
+    { label: "Bandwidth", value: data.bandwidth_gbps, unit: "Gbps" },
+    { label: "Cache Dataset", value: data.cache_dataset_gb, unit: "GB" },
+  ]
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gold font-mono text-sm uppercase tracking-wider">
+        Capacity Estimation
+      </h2>
+      <div className="space-y-2">
+        {metrics.map((m) => (
+          <div key={m.label} className="flex justify-between items-baseline bg-ink-charcoal border border-ink-graphite p-3">
+            <span className="text-ink-steel text-xs">{m.label}</span>
+            <span className="text-ink-white font-mono text-sm">
+              {m.value} <span className="text-ink-steel text-xs">{m.unit}</span>
+            </span>
+          </div>
+        ))}
+      </div>
+      {data.formulas && (
+        <div className="mt-4">
+          <h3 className="text-ink-ash text-xs font-mono uppercase mb-2">Formulas</h3>
+          <div className="space-y-1">
+            {Object.entries(data.formulas).map(([key, formula]) => (
+              <div key={key} className="bg-ink-charcoal border border-ink-graphite p-2">
+                <span className="text-gold-text text-xs font-mono">{key}:</span>
+                <p className="text-ink-ash text-xs mt-1">{formula as string}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ── Data Model View ───────────────────────────────────────────────────────────
+
+function DataModelView({ data }: { data: any }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gold font-mono text-sm uppercase tracking-wider">
+        Data Model
+      </h2>
+      <div className="bg-ink-charcoal border border-ink-graphite p-3">
+        <span className="text-ink-steel text-xs">Decision:</span>
+        <span className="text-gold font-mono text-sm ml-2">{data.decision}</span>
+      </div>
+      <p className="text-ink-ash text-xs">{data.rationale}</p>
+      <div className="space-y-3">
+        {data.entities?.map((entity: any) => (
+          <div key={entity.name} className="bg-ink-charcoal border border-ink-graphite p-3">
+            <h3 className="text-cyan-pulse font-mono text-sm mb-2">{entity.name}</h3>
+            <div className="space-y-1">
+              {entity.columns?.map((col: any) => (
+                <div key={col.name} className="flex items-center gap-2 text-xs">
+                  <span className="text-ink-white font-mono">{col.name}</span>
+                  <span className="text-ink-steel">{col.type}</span>
+                  {col.primary && <span className="text-gold text-[10px]">PK</span>}
+                  {col.indexed && <span className="text-cyan-pulse text-[10px]">IDX</span>}
+                </div>
+              ))}
+            </div>
+            {entity.sharding_key && (
+              <p className="text-ink-steel text-xs mt-2">
+                Sharding: <span className="text-gold-text">{entity.sharding_key}</span>
+              </p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── API View ──────────────────────────────────────────────────────────────────
+
+function ApiView({ data }: { data: any }) {
+  const methodColors: Record<string, string> = {
+    GET: "text-cyan-pulse",
+    POST: "text-gold",
+    PUT: "text-ink-white",
+    DELETE: "text-red-400",
+    PATCH: "text-ink-ash",
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gold font-mono text-sm uppercase tracking-wider">
+        API Design
+      </h2>
+      <div className="flex gap-4">
+        <div className="bg-ink-charcoal border border-ink-graphite p-2">
+          <span className="text-ink-steel text-xs">Style:</span>
+          <span className="text-ink-white font-mono text-sm ml-2">{data.style}</span>
+        </div>
+        <div className="bg-ink-charcoal border border-ink-graphite p-2">
+          <span className="text-ink-steel text-xs">Auth:</span>
+          <span className="text-ink-white font-mono text-sm ml-2">{data.auth}</span>
+        </div>
+      </div>
+      <div className="space-y-2">
+        {data.endpoints?.map((ep: any, i: number) => (
+          <div key={i} className="bg-ink-charcoal border border-ink-graphite p-3">
+            <div className="flex items-center gap-2 mb-1">
+              <span className={`font-mono text-xs font-bold ${methodColors[ep.method] || "text-ink-white"}`}>
+                {ep.method}
+              </span>
+              <span className="text-ink-white font-mono text-sm">{ep.path}</span>
+            </div>
+            <p className="text-ink-ash text-xs">{ep.description}</p>
+            {ep.rate_limit && (
+              <p className="text-ink-steel text-xs mt-1">Rate: {ep.rate_limit}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ── Stack View ────────────────────────────────────────────────────────────────
+
+function StackView({ data }: { data: any }) {
+  return (
+    <div className="space-y-4">
+      <h2 className="text-gold font-mono text-sm uppercase tracking-wider">
+        Tech Stack
+      </h2>
+      <div className="space-y-3">
+        {data.layers?.map((layer: any) => (
+          <div key={layer.layer} className="bg-ink-charcoal border border-ink-graphite p-3">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-ink-steel text-xs uppercase">{layer.layer}</span>
+              <span className="text-gold font-mono text-sm">{layer.primary}</span>
+            </div>
+            <p className="text-ink-ash text-xs mb-2">{layer.rationale}</p>
+            {layer.alternatives?.length > 0 && (
+              <div className="flex flex-wrap gap-1 mb-2">
+                {layer.alternatives.map((alt: string) => (
+                  <span key={alt} className="text-[10px] bg-ink-graphite text-ink-steel px-1.5 py-0.5">
+                    {alt}
+                  </span>
+                ))}
+              </div>
+            )}
+            {layer.trade_off && (
+              <p className="text-ink-steel text-xs italic">Trade-off: {layer.trade_off}</p>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
 }

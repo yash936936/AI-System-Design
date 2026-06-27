@@ -2,8 +2,10 @@
 import { useRef, useEffect, useState } from "react"
 import { SendHorizontalIcon, ZapIcon } from "lucide-react"
 import { useStore } from "@/store/useStore"
-import { classifyPrompt, getMCQTemplate, createSession } from "@/lib/api"
+import { classifyPrompt, getMCQTemplate, createSession, openStream } from "@/lib/api"
 import ChatMessageItem from "./ChatMessage"
+import type { SSEEvent } from "@/types"
+
 
 const EXAMPLE_PROMPTS = [
   "Design Twitter's timeline feed",
@@ -16,13 +18,14 @@ export default function ChatPanel() {
   const {
     session, messages, addMessage,
     startSession, setClassification, setMcqTemplate, setSessionId,
-    setSessionStatus,
+    setSessionStatus, handleSSEEvent, handleStreamDone, handleStreamError,
   } = useStore()
 
   const [input, setInput] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const streamCleanupRef = useRef<(() => void) | null>(null)
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -37,13 +40,19 @@ export default function ChatPanel() {
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`
   }, [input])
 
+  // Cleanup stream on unmount
+  useEffect(() => {
+    return () => {
+      streamCleanupRef.current?.()
+    }
+  }, [])
+
   const handleSubmit = async () => {
     const prompt = input.trim()
     if (!prompt || isLoading) return
     setInput("")
     setIsLoading(true)
 
-    // Start session in store — adds user message + "analysing..." message
     startSession(prompt)
 
     try {
@@ -51,7 +60,7 @@ export default function ChatPanel() {
       const classification = await classifyPrompt(prompt)
       setClassification(classification)
 
-      // Phase B: Fetch MCQ template (0 Gemini calls)
+      // Phase B: Fetch MCQ template
       const template = await getMCQTemplate(classification.type)
       setMcqTemplate(template)
 
@@ -63,23 +72,37 @@ export default function ChatPanel() {
     }
   }
 
-  // After all MCQ answered — create session and move to generation
+  // Phase D: Generate design with SSE streaming
   const handleGenerate = async () => {
     if (!session.designType || session.status !== "creating") return
     setIsLoading(true)
     setSessionStatus("creating")
 
     try {
+      // Create session
       const result = await createSession({
         prompt: session.prompt,
         design_type: session.designType,
         context: session.context,
       })
       setSessionId(result.session_id)
+      
       addMessage("assistant", "text",
-        "Session created. Generation pipeline activates in Stage 4 — for now, your design context has been saved."
+        "Session created. Starting generation pipeline… 🚀"
       )
-      setSessionStatus("complete")
+      setSessionStatus("generating")
+
+      // Open SSE stream
+     const cleanup = openStream(
+          result.session_id,
+      {
+       onEvent: (event: SSEEvent) => handleSSEEvent(event),
+       onDone: () => handleStreamDone(),
+        onError: (err: string, errorCode?: string) => handleStreamError(err, errorCode),
+    }
+)
+streamCleanupRef.current = cleanup
+
     } catch (err) {
       addMessage("assistant", "text", `Failed to create session: ${(err as Error).message}`)
       setSessionStatus("error")
@@ -91,25 +114,22 @@ export default function ChatPanel() {
   const isEmpty = messages.length === 0
 
   return (
-    <div className="flex-1 flex flex-col h-full min-w-0 bg-surface-black">
-
+    <div className="flex-1 flex flex-col h-full bg-ink-black">
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto py-8 space-y-6">
-
-        {/* Empty state — hero, full darkness, gold relief only on accent */}
+      <div className="flex-1 overflow-y-auto px-6 py-8">
+        {/* Empty state */}
         {isEmpty && (
-          <div className="flex flex-col items-center justify-center h-full px-8 text-center space-y-8">
-            <div className="space-y-4 max-w-2xl">
-              <h1 className="text-sub md:text-section font-normal text-ink-white uppercase">
-                What System Do You Want To Design?
-              </h1>
-              <p className="text-body text-ink-ash max-w-md mx-auto">
-                Describe a product or component and I&rsquo;ll guide you through HLD or LLD — with real-world references.
-              </p>
+          <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto">
+            <div className="w-16 h-16 border-2 border-gold mb-6 flex items-center justify-center">
+              <span className="text-gold font-mono text-2xl">S</span>
             </div>
-
-            {/* Example prompt ghost buttons */}
-            <div className="flex flex-wrap gap-3 justify-center max-w-2xl">
+            <h1 className="text-ink-white text-3xl font-light mb-3">
+              What System Do You Want To Design?
+            </h1>
+            <p className="text-ink-steel text-sm mb-8">
+              Describe a product or component and I'll guide you through HLD or LLD — with real-world references.
+            </p>
+            <div className="flex flex-wrap gap-2 justify-center">
               {EXAMPLE_PROMPTS.map((p) => (
                 <button
                   key={p}
@@ -125,22 +145,17 @@ export default function ChatPanel() {
 
         {/* Message list */}
         {messages.map((msg) => (
-          <ChatMessageItem
-            key={msg.id}
-            message={msg}
-            mcqTemplate={session.mcqTemplate}
-          />
+          <ChatMessageItem key={msg.id} message={msg} mcqTemplate={session.mcqTemplate} />
         ))}
 
-        {/* Generate button — Gold Accent CTA, appears after all MCQ complete */}
+        {/* Generate button */}
         {session.status === "creating" && (
-          <div className="px-6">
+          <div className="flex justify-center mt-6">
             <button
               onClick={handleGenerate}
-              disabled={isLoading}
-              className="btn-accent"
+              className="btn-gold flex items-center gap-2"
             >
-              <ZapIcon size={16} />
+              <ZapIcon className="w-4 h-4" />
               Generate Design
             </button>
           </div>
@@ -148,26 +163,22 @@ export default function ChatPanel() {
 
         {/* Loading indicator */}
         {isLoading && (
-          <div className="px-6 flex items-center gap-3 text-btnsm uppercase tracking-wide text-ink-ash">
-            <div className="flex gap-1.5">
+          <div className="flex items-center gap-2 text-ink-steel text-sm mt-4">
+            <div className="flex gap-1">
               {[0, 1, 2].map((i) => (
-                <span
-                  key={i}
-                  className="w-1.5 h-1.5 bg-gold animate-bounce"
-                  style={{ animationDelay: `${i * 150}ms` }}
-                />
+                <div key={i} className="w-1.5 h-1.5 bg-gold rounded-full animate-pulse" />
               ))}
             </div>
-            <span>Processing…</span>
+            Processing…
           </div>
         )}
 
         <div ref={bottomRef} />
       </div>
 
-      {/* Input bar — sharp corners, charcoal surface, gold focus + send */}
-      <div className="px-6 pb-6 pt-3 border-t border-[#202020]">
-        <div className="relative bg-surface-charcoal rounded-none border border-white/15 focus-within:border-gold transition-colors">
+      {/* Input bar */}
+      <div className="border-t border-ink-graphite p-4">
+        <div className="max-w-3xl mx-auto flex gap-3 items-end">
           <textarea
             ref={textareaRef}
             value={input}
@@ -178,27 +189,19 @@ export default function ChatPanel() {
                 handleSubmit()
               }
             }}
-            placeholder="Describe a system to design…"
+            placeholder="Describe the system you want to design…"
+            className="input-dark flex-1 py-3 px-4 text-sm resize-none min-h-[48px] max-h-[160px]"
             rows={1}
-            disabled={isLoading || (session.status !== "idle" && session.status !== "error")}
-            className="w-full bg-transparent resize-none px-4 py-4 pr-14
-                       text-body text-ink-white placeholder:text-ink-steel
-                       focus:outline-none disabled:opacity-40 max-h-40"
+            disabled={isLoading || session.status === "generating"}
           />
           <button
             onClick={handleSubmit}
-            disabled={!input.trim() || isLoading}
-            className="absolute right-3 bottom-3 p-2 rounded-none
-                       bg-gold text-surface-black hover:bg-gold-dark
-                       disabled:opacity-30 disabled:cursor-not-allowed
-                       transition-colors duration-150"
+            disabled={!input.trim() || isLoading || session.status === "generating"}
+            className="btn-gold p-3 disabled:opacity-40"
           >
-            <SendHorizontalIcon size={15} />
+            <SendHorizontalIcon className="w-5 h-5" />
           </button>
         </div>
-        <p className="text-micro uppercase tracking-wide text-ink-steel text-center mt-3">
-          Shift+Enter for new line · Enter to send
-        </p>
       </div>
     </div>
   )
