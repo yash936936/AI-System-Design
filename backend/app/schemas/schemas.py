@@ -15,6 +15,7 @@ class ClassifyResponse(BaseModel):
     type: Literal["HLD", "LLD"]
     confidence: float
     reasoning: str
+
     # The frontend's "Not right? Switch to X" button reads this directly and
     # passes it straight into setDesignType(correction) with no null-check,
     # so it must ALWAYS be populated (the opposite of `type`).
@@ -113,15 +114,20 @@ class FamousSystemSchema(BaseModel):
     sources: list[str]
     last_updated: datetime
 
+class FamousDesignResponse(BaseModel):
+    system: str
+    title: str
+    last_updated: str
+    diagram: dict
+    sections: dict
+    key_insights: list[str]
+    sources: list[str]
+
 class ErrorResponse(BaseModel):
     error: str
     error_code: Optional[str] = None
 
 # ── Phase D: Generation / SSE ──────────────────────────────────────────────────
-# Flexible envelope covering every member of the frontend's SSEEvent
-# discriminated union (ping | heartbeat | section.start | section.done |
-# section.error | pipeline.done | pipeline.error). `type` is the discriminator
-# the frontend's openStream() switches on — every event MUST set it.
 class SSEEvent(BaseModel):
     type: str
     timestamp: int
