@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes import classify, mcq, retrieval, generation, export
+from app.api.routes import classify, mcq, retrieval, generation, export, famous
 from app.api.routes.routes import router as session_router
 from app.db.session import init_db
 
@@ -26,6 +26,9 @@ app.include_router(mcq.router)
 app.include_router(retrieval.router)
 app.include_router(generation.router)
 app.include_router(export.router)
+app.include_router(famous.router)  # FIX: was imported above but never registered — /api/famous and
+                                    # /api/famous/{slug} 404'd no matter what (and, before the
+                                    # retrieval.py fix, would have failed to import at all).
 app.include_router(session_router)
 
 @app.get("/health")

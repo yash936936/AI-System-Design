@@ -1,48 +1,93 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional, Literal, Any
 from uuid import UUID
 from datetime import datetime
 
-# ── Session ───────────────────────────────────────────────────────────────────
+VALID_DESIGN_TYPES = {"HLD", "LLD"}
+
+# ── Phase A: Classify ──────────────────────────────────────────────────────────
+class ClassifyRequest(BaseModel):
+    prompt: str
+
+class ClassifyResponse(BaseModel):
+    # NOTE: must be UPPERCASE "HLD"/"LLD" — the frontend's DesignType union is
+    # 'HLD' | 'LLD' and the store does a strict `result.type === "HLD"` check.
+    type: Literal["HLD", "LLD"]
+    confidence: float
+    reasoning: str
+    # The frontend's "Not right? Switch to X" button reads this directly and
+    # passes it straight into setDesignType(correction) with no null-check,
+    # so it must ALWAYS be populated (the opposite of `type`).
+    suggested_correction: Literal["HLD", "LLD"]
+    keywords: Optional[list[str]] = None
+
+# ── Phase B: MCQ ───────────────────────────────────────────────────────────────
+class MCQOption(BaseModel):
+    id: str
+    label: str
+    description: Optional[str] = None
+    recommended: Optional[bool] = None
+    icon: Optional[str] = None
+
+class MCQCategory(BaseModel):
+    id: str
+    label: str
+    question: str
+    type: Literal["single_select", "multi_select"]
+    options: list[MCQOption]
+    allow_free_text: bool = False
+    free_text_placeholder: str = "Add your own..."
+    required: bool = True
+    help_text: Optional[str] = None
+    defaults: Optional[list[str]] = None
+
+class MCQTemplate(BaseModel):
+    design_type: str
+    categories: list[MCQCategory]
+    version: str = "1.0"
+
+# ── Session ────────────────────────────────────────────────────────────────────
 class CreateSessionRequest(BaseModel):
     prompt: str
-    system_name: Optional[str] = None
-    design_type: Optional[Literal["hld", "lld"]] = None
+    design_type: Literal["HLD", "LLD"]
+    context: dict[str, Any] = Field(default_factory=dict)
 
 class CreateSessionResponse(BaseModel):
     session_id: UUID
     retrieve_url: str
     stream_url: str
     status: str
+    created_at: int  # epoch ms — frontend expects a number, not an ISO string
+
+class SectionResultSchema(BaseModel):
+    section: str
+    status: str
+    payload: Optional[dict[str, Any]] = None
+    tokens_used: Optional[int] = None
+    duration_ms: Optional[int] = None
+    cached: Optional[bool] = None
+    error: Optional[str] = None
 
 class SessionResponse(BaseModel):
-    id: UUID
-    prompt: str
-    system_name: Optional[str] = None
-    design_type: Optional[str] = None
+    """Matches the frontend's GetSessionResponse contract."""
+    session_id: UUID
     status: str
-    created_at: datetime
+    design_type: Optional[str] = None
+    context: dict[str, Any] = Field(default_factory=dict)
+    sections: dict[str, SectionResultSchema] = Field(default_factory=dict)
+    created_at: int
+    completed_at: Optional[int] = None
+    total_tokens: Optional[int] = None
+    total_duration_ms: Optional[int] = None
 
-# ── Phase A: Classify ─────────────────────────────────────────────────────────
-class ClassifyRequest(BaseModel):
-    prompt: str
+class GenerationStatusResponse(BaseModel):
+    session_id: UUID
+    session_status: str
+    sections: dict[str, dict[str, Any]] = Field(default_factory=dict)
+    total_tokens: int = 0
+    total_duration_ms: int = 0
 
-class ClassifyResponse(BaseModel):
-    type: Literal["hld", "lld", "unknown"]
-    confidence: float
-    reasoning: str
-
-# ── Phase B: MCQ ──────────────────────────────────────────────────────────────
-class MCQQuestion(BaseModel):
-    question: str
-    options: list[str]
-    correct_answer: str
-
-class MCQTemplate(BaseModel):
-    design_type: str
-    questions: list[MCQQuestion]
-
-# ── Phase C: Retrieval ────────────────────────────────────────────────────────
+# ── Phase C: Retrieval ─────────────────────────────────────────────────────────
 class RagChunk(BaseModel):
     id: str
     source: str
@@ -58,17 +103,42 @@ class RetrievalResponse(BaseModel):
     used_web_fallback: bool
     famous_design_matched: Optional[str] = None
 
-# ── Phase D: Generation ───────────────────────────────────────────────────────
-class SSEEvent(BaseModel):
-    section: str
-    status: str
-    payload: Optional[dict[str, Any]] = None
-    tokens_used: int = 0
-    cached: bool = False
-    duration_ms: int = 0
-    error: Optional[str] = None
+# ── Famous Systems ─────────────────────────────────────────────────────────────
+class FamousSystemSchema(BaseModel):
+    system_name: str
+    title: str
+    canonical_json: dict
+    diagram_json: dict
+    key_insights: list[str]
+    sources: list[str]
+    last_updated: datetime
 
-# ── Phase 6: Export ───────────────────────────────────────────────────────────
+class ErrorResponse(BaseModel):
+    error: str
+    error_code: Optional[str] = None
+
+# ── Phase D: Generation / SSE ──────────────────────────────────────────────────
+# Flexible envelope covering every member of the frontend's SSEEvent
+# discriminated union (ping | heartbeat | section.start | section.done |
+# section.error | pipeline.done | pipeline.error). `type` is the discriminator
+# the frontend's openStream() switches on — every event MUST set it.
+class SSEEvent(BaseModel):
+    type: str
+    timestamp: int
+    session_id: Optional[UUID] = None
+    message: Optional[str] = None
+    section: Optional[str] = None
+    status: Optional[str] = None
+    payload: Optional[dict[str, Any]] = None
+    tokens_used: Optional[int] = None
+    duration_ms: Optional[int] = None
+    cached: Optional[bool] = None
+    total_tokens: Optional[int] = None
+    total_duration_ms: Optional[int] = None
+    error: Optional[str] = None
+    error_code: Optional[str] = None
+
+# ── Phase 6: Export (prepared, not wired into the UI yet) ─────────────────────
 class ExportRequest(BaseModel):
     format: Literal["pdf", "md", "json"]
     sections: list[str] = ["architecture", "capacity", "data_model", "api_design", "stack"]

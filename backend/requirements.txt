@@ -7,7 +7,11 @@ pydantic-settings==2.2.1
 
 # Database
 sqlalchemy[asyncio]==2.0.30
-asyncpg==0.29.0
+asyncpg==0.29.0       # for Postgres in production (DATABASE_URL=postgresql+asyncpg://...)
+aiosqlite==0.20.0     # FIX: was missing — the default DATABASE_URL is sqlite+aiosqlite,
+                      # but the driver itself was never in requirements.txt, so a fresh
+                      # `pip install -r requirements.txt` + `uvicorn main:app` (i.e. the
+                      # README's own quick-start, with no .env at all) failed immediately.
 alembic==1.13.1
 
 # Gemini
@@ -27,4 +31,3 @@ redis==5.0.4
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
-

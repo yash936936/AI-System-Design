@@ -9,7 +9,8 @@ class Settings(BaseSettings):
     app_name: str = "SysDesign AI"
     debug: bool = True
 
-    # Database (Async SQLite)
+    # Database — defaults to local SQLite for zero-config dev.
+    # Override with a Postgres URL (postgresql+asyncpg://...) in .env for prod.
     database_url: str = "sqlite+aiosqlite:///./sysdesign.db"
 
     # Gemini (Reads GEMINI_API_KEY from .env automatically)
@@ -23,8 +24,8 @@ class Settings(BaseSettings):
     chroma_port: int = 8000
 
     model_config = SettingsConfigDict(
-        env_file=".env", 
-        env_file_encoding="utf-8", 
+        env_file=".env",
+        env_file_encoding="utf-8",
         extra="ignore",
         case_sensitive=False
     )

@@ -87,6 +87,90 @@ function makeMessage(
 }
 
 /**
+ * SessionContext fields that are arrays (vs. plain scalar strings).
+ * Used by buildContextFromAnswers() to know how to fold MCQ answers in.
+ */
+const ARRAY_CONTEXT_FIELDS = new Set<keyof SessionContext>([
+  "functional_reqs",
+  "out_of_scope",
+  "user_actors",
+  "bottleneck_focus",
+])
+
+/**
+ * Fold collected MCQ answers (option ids + free text) into a SessionContext.
+ *
+ * FIX: previously, answerMcqCategory() only wrote into
+ * session.mcqAnswers/mcqFreeText, and nothing ever copied those into
+ * session.context — which is the object handleGenerate() actually sends to
+ * the backend via createSession(). Every session was created with the
+ * original empty context, silently discarding every MCQ answer the user gave.
+ *
+ * Category ids are expected to line up with SessionContext field names
+ * (see backend/app/services/mcq_templates.py) — e.g. category "dau" maps to
+ * context.dau, category "functional_reqs" maps to context.functional_reqs.
+ * Anything that doesn't match a known field falls back into
+ * custom_requirements so no answer is ever silently dropped.
+ */
+function buildContextFromAnswers(
+  template: MCQTemplate,
+  mcqAnswers: Record<string, string[]>,
+  mcqFreeText: Record<string, string>,
+): Partial<SessionContext> {
+  const context: Record<string, unknown> = {}
+  const customRequirements: Record<string, string> = {}
+
+  for (const category of template.categories) {
+    const selectedIds = mcqAnswers[category.id] ?? []
+    const labels = selectedIds
+      .map((id) => category.options.find((o) => o.id === id)?.label)
+      .filter((label): label is string => Boolean(label))
+    const freeText = mcqFreeText[category.id]?.trim()
+
+    if (labels.length === 0 && !freeText) continue
+
+    if (ARRAY_CONTEXT_FIELDS.has(category.id as keyof SessionContext)) {
+      const values = [...labels]
+      if (freeText) values.push(freeText)
+      context[category.id] = values
+    } else if (category.id in EMPTY_SESSION_CONTEXT_KEYS) {
+      context[category.id] = labels.length > 0 ? labels.join(", ") : freeText
+    } else {
+      // Unrecognized category id — don't drop the answer, file it under
+      // custom_requirements instead.
+      customRequirements[category.id] =
+        labels.length > 0 ? labels.join(", ") : (freeText as string)
+    }
+  }
+
+  if (Object.keys(customRequirements).length > 0) {
+    context.custom_requirements = customRequirements
+  }
+
+  return context as Partial<SessionContext>
+}
+
+/**
+ * Known scalar (non-array) SessionContext keys, used to decide whether an
+ * MCQ category id maps onto a real context field or should fall back to
+ * custom_requirements.
+ */
+const EMPTY_SESSION_CONTEXT_KEYS: Record<string, true> = {
+  read_write_ratio: true,
+  scale: true,
+  dau: true,
+  availability: true,
+  consistency: true,
+  latency_target: true,
+  request_size_category: true,
+  data_model_preference: true,
+  api_style: true,
+  architecture_approach: true,
+  scalability_priority: true,
+  trade_off_priority: true,
+}
+
+/**
  * Empty session template.
  */
 const EMPTY_SESSION: Session = {
@@ -328,7 +412,17 @@ export const useStore = create<Store>()(
             }),
           )
         } else {
-          // All MCQs complete
+          // All MCQs complete — merge collected answers into session.context
+          // (this is the object actually sent to the backend on session
+          // creation; see buildContextFromAnswers() above for why this step
+          // is required).
+          const built = buildContextFromAnswers(
+            template,
+            state.session.mcqAnswers,
+            state.session.mcqFreeText,
+          )
+          state.session.context = { ...state.session.context, ...built }
+
           state.session.status = SESSION_STATUS.CREATING
           state.messages.push(
             makeMessage(
