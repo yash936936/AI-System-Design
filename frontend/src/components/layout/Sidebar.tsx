@@ -2,6 +2,7 @@
 import { PlusIcon, MessageSquareIcon } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { LogoLockup } from "@/components/brand/Logo"
+import UserMenu from "@/components/auth/UserMenu"
 
 export default function Sidebar() {
   const { sessionHistory, resetSession } = useStore()
@@ -52,8 +53,14 @@ export default function Sidebar() {
         ))}
       </nav>
 
+      {/* Account — was defined but never rendered anywhere in the app,
+          which meant there was no way to sign out once signed in. */}
+      <div className="px-3 pt-3 border-t border-[#202020]">
+        <UserMenu />
+      </div>
+
       {/* Footer */}
-      <div className="px-5 py-4 border-t border-[#202020]">
+      <div className="px-5 py-4">
         <p className="text-micro uppercase tracking-wide text-ink-ash">
           Powered by Gemini Flash · Free Tier
         </p>

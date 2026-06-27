@@ -84,3 +84,42 @@ class Export(Base):
     created_at = Column(DateTime, default=_naive_utcnow)
 
     session = relationship("Session", back_populates="exports")
+
+# NOTE: these two models were referenced (but never defined) by two
+# standalone maintenance scripts:
+#   - app/services/seed_data.py            -> FamousSystem
+#   - scripts/ingest_famous_designs.py     -> FamousDesign
+# Both scripts would raise ImportError the moment they were actually run.
+# Neither is imported by the live app at startup (the live RAG flow uses
+# the in-memory mock catalog in services/retrieval.py instead — see the
+# comment at the top of that file), so this was previously a silent,
+# dormant bug rather than a startup crash. Adding the two models here
+# matches each script's already-written field usage exactly; the scripts
+# themselves were not changed.
+
+class FamousSystem(Base):
+    __tablename__ = "famous_systems"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    name = Column(String, nullable=False)
+    slug = Column(String(64), unique=True, nullable=False, index=True)
+    description = Column(String, nullable=True)
+    design_type = Column(String(16), nullable=True)
+    key_components = Column(JSON, default=list)
+    architecture_summary = Column(String, nullable=True)
+    tags = Column(JSON, default=list)
+    reference_url = Column(String, nullable=True)
+    created_at = Column(DateTime, default=_naive_utcnow)
+    updated_at = Column(DateTime, default=_naive_utcnow, onupdate=_naive_utcnow)
+
+class FamousDesign(Base):
+    __tablename__ = "famous_designs"
+
+    id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    system_name = Column(String(64), unique=True, nullable=False, index=True)
+    title = Column(String, nullable=True)
+    diagram_json = Column(JSON, default=dict)
+    canonical_json = Column(JSON, default=dict)
+    key_insights = Column(JSON, default=list)
+    sources = Column(JSON, default=list)
+    last_updated = Column(DateTime, default=_naive_utcnow, nullable=False)

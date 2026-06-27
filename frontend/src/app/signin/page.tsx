@@ -2,7 +2,7 @@
 
 import { signIn, useSession } from "next-auth/react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { useEffect, useState } from "react"
+import { Suspense, useEffect, useState } from "react"
 import { Zap } from "lucide-react"
 
 function GoogleIcon() {
@@ -24,7 +24,13 @@ function GitHubIcon() {
   )
 }
 
-export default function SignInPage() {
+// `useSearchParams()` opts a component out of static rendering — App
+// Router requires it to sit inside a <Suspense> boundary, or `next build`
+// fails to prerender this page (confirmed via a real build run, not just
+// docs): "useSearchParams() should be wrapped in a suspense boundary at
+// page "/signin"". Isolating it in its own child component keeps that
+// requirement scoped to just the bit that needs it.
+function SignInCard() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -43,6 +49,79 @@ export default function SignInPage() {
   }
 
   return (
+    <div className="relative w-full max-w-sm">
+      {/* Logo */}
+      <div className="flex items-center gap-3 mb-10">
+        <div className="w-10 h-10 bg-gold flex items-center justify-center">
+          <Zap size={20} className="text-surface-black" strokeWidth={2.5} />
+        </div>
+        <div>
+          <div className="font-lambo text-ink-white text-lg tracking-widest uppercase leading-none">
+            SysDesign
+          </div>
+          <div className="font-lambo text-gold text-xs tracking-[0.3em] uppercase">
+            AI
+          </div>
+        </div>
+      </div>
+
+      {/* Card */}
+      <div className="bg-surface-iron border border-ink-shadow rounded-sm p-8">
+        <h1 className="font-lambo text-ink-white text-2xl tracking-wider uppercase mb-1">
+          Sign in
+        </h1>
+        <p className="text-ink-ash text-sm mb-8">
+          Continue to your system design workspace.
+        </p>
+
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => handleSignIn("google")}
+            disabled={loadingProvider !== null}
+            className="
+              flex items-center gap-3 w-full px-4 py-3
+              bg-surface-charcoal border border-ink-shadow
+              text-ink-smoke text-sm font-lambo tracking-wider uppercase
+              hover:border-gold hover:text-ink-white
+              disabled:opacity-50 disabled:cursor-not-allowed
+              transition-all duration-150
+            "
+          >
+            <GoogleIcon />
+            {loadingProvider === "google" ? "Connecting…" : "Continue with Google"}
+          </button>
+
+          <button
+            onClick={() => handleSignIn("github")}
+            disabled={loadingProvider !== null}
+            className="
+              flex items-center gap-3 w-full px-4 py-3
+              bg-surface-charcoal border border-ink-shadow
+              text-ink-smoke text-sm font-lambo tracking-wider uppercase
+              hover:border-gold hover:text-ink-white
+              disabled:opacity-50 disabled:cursor-not-allowed
+              transition-all duration-150
+            "
+          >
+            <GitHubIcon />
+            {loadingProvider === "github" ? "Connecting…" : "Continue with GitHub"}
+          </button>
+        </div>
+
+        <p className="text-ink-steel text-xs mt-8 leading-relaxed">
+          By signing in you agree to our terms of service. Your designs are
+          stored securely and linked to your account.
+        </p>
+      </div>
+
+      {/* Accent line */}
+      <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-gold to-transparent opacity-30" />
+    </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
     <div className="min-h-screen bg-surface-black flex items-center justify-center p-4">
       {/* Background grid */}
       <div
@@ -52,75 +131,9 @@ export default function SignInPage() {
           backgroundSize: "80px 80px",
         }}
       />
-
-      <div className="relative w-full max-w-sm">
-        {/* Logo */}
-        <div className="flex items-center gap-3 mb-10">
-          <div className="w-10 h-10 bg-gold flex items-center justify-center">
-            <Zap size={20} className="text-surface-black" strokeWidth={2.5} />
-          </div>
-          <div>
-            <div className="font-lambo text-ink-white text-lg tracking-widest uppercase leading-none">
-              SysDesign
-            </div>
-            <div className="font-lambo text-gold text-xs tracking-[0.3em] uppercase">
-              AI
-            </div>
-          </div>
-        </div>
-
-        {/* Card */}
-        <div className="bg-surface-iron border border-ink-shadow rounded-sm p-8">
-          <h1 className="font-lambo text-ink-white text-2xl tracking-wider uppercase mb-1">
-            Sign in
-          </h1>
-          <p className="text-ink-ash text-sm mb-8">
-            Continue to your system design workspace.
-          </p>
-
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => handleSignIn("google")}
-              disabled={loadingProvider !== null}
-              className="
-                flex items-center gap-3 w-full px-4 py-3
-                bg-surface-charcoal border border-ink-shadow
-                text-ink-smoke text-sm font-lambo tracking-wider uppercase
-                hover:border-gold hover:text-ink-white
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-all duration-150
-              "
-            >
-              <GoogleIcon />
-              {loadingProvider === "google" ? "Connecting…" : "Continue with Google"}
-            </button>
-
-            <button
-              onClick={() => handleSignIn("github")}
-              disabled={loadingProvider !== null}
-              className="
-                flex items-center gap-3 w-full px-4 py-3
-                bg-surface-charcoal border border-ink-shadow
-                text-ink-smoke text-sm font-lambo tracking-wider uppercase
-                hover:border-gold hover:text-ink-white
-                disabled:opacity-50 disabled:cursor-not-allowed
-                transition-all duration-150
-              "
-            >
-              <GitHubIcon />
-              {loadingProvider === "github" ? "Connecting…" : "Continue with GitHub"}
-            </button>
-          </div>
-
-          <p className="text-ink-steel text-xs mt-8 leading-relaxed">
-            By signing in you agree to our terms of service. Your designs are
-            stored securely and linked to your account.
-          </p>
-        </div>
-
-        {/* Accent line */}
-        <div className="mt-6 h-px w-full bg-gradient-to-r from-transparent via-gold to-transparent opacity-30" />
-      </div>
+      <Suspense fallback={null}>
+        <SignInCard />
+      </Suspense>
     </div>
   )
 }

@@ -52,7 +52,7 @@ async def _collect_generation_content(
     """Return GenerationOutput rows for the session, filtered by sections."""
     q = select(GenerationOutput).where(
         GenerationOutput.session_id == session_id,
-        GenerationOutput.status == "done",
+        GenerationOutput.status == "complete",
     )
     result = await db.execute(q)
     rows = result.scalars().all()

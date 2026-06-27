@@ -174,7 +174,7 @@ export async function cancelGeneration(sessionId: string): Promise<void> {
 }
 
 function parseSSEEvent(raw: string): SSEEvent | null {
-  const lines = raw.split("\\n")
+  const lines = raw.split("\n")
   let eventType = "message"
   let data = ""
   for (const line of lines) {
@@ -219,7 +219,7 @@ export function openStream(sessionId: string, handlers: SSEHandlers): () => void
         const { done, value } = await reader.read()
         if (done) { handlers.onDone(); break }
         buffer += decoder.decode(value, { stream: true })
-        const events = buffer.split("\\n\\n")
+        const events = buffer.split("\n\n")
         buffer = events.pop() || ""
 
         for (const eventText of events) {
