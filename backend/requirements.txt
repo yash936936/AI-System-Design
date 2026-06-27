@@ -31,3 +31,9 @@ redis==5.0.4
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 python-multipart==0.0.9
+# Export pipeline
+weasyprint==62.3          # Real PDF generation from HTML+CSS
+fpdf2==2.7.9              # Fallback PDF if WeasyPrint unavailable
+
+# Auth — JWT verification (python-jose already listed above, kept for clarity)
+# python-jose[cryptography]==3.3.0  ← already present

@@ -23,6 +23,10 @@ class Settings(BaseSettings):
     chroma_host: str = "localhost"
     chroma_port: int = 8000
 
+    # Auth — shared secret between Next.js bridge and FastAPI token verifier.
+    # Must match INTERNAL_AUTH_SECRET in the frontend .env.local.
+    internal_auth_secret: str = "dev-secret-change-me"
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

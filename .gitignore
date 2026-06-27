@@ -67,4 +67,5 @@ yarn-error.log*
 frontend/*.log
 
 # Vercel / Deployment
-.vercel
+.vercel.env
+frontend/.env
