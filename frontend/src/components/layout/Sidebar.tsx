@@ -1,6 +1,7 @@
 "use client"
 import { PlusIcon, MessageSquareIcon } from "lucide-react"
 import { useStore } from "@/store/useStore"
+import { LogoLockup } from "@/components/brand/Logo"
 
 export default function Sidebar() {
   const { sessionHistory, resetSession } = useStore()
@@ -8,12 +9,9 @@ export default function Sidebar() {
   return (
     <aside className="w-sidebar flex flex-col h-full bg-surface-black border-r border-[#202020] shrink-0">
 
-      {/* Logo — hexagonal mark + uppercase wordmark */}
-      <div className="px-5 pt-6 pb-4 flex items-center gap-2.5">
-        <span className="hexagon w-5 h-5 bg-gold shrink-0" />
-        <span className="text-body font-medium text-ink-white uppercase tracking-wide">
-          SysDesign AI
-        </span>
+      {/* Logo — brand mark + uppercase wordmark */}
+      <div className="px-5 pt-6 pb-4">
+        <LogoLockup />
       </div>
 
       {/* New Design — Gold Accent CTA */}

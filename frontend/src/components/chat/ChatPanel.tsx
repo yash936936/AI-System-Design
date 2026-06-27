@@ -4,13 +4,18 @@ import { SendHorizontalIcon, ZapIcon } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import { classifyPrompt, getMCQTemplate, createSession, openStream } from "@/lib/api"
 import ChatMessageItem from "./ChatMessage"
+import { LogoMark } from "@/components/brand/Logo"
 import type { SSEEvent } from "@/types"
 
+// The system designs most frequently asked about in LLM chats and
+// technical interview prep — used as one-tap starter prompts.
 const EXAMPLE_PROMPTS = [
+  "Design a URL shortener like Bit.ly",
   "Design Twitter's timeline feed",
-  "Design the auth service for a SaaS app",
-  "How would you design WhatsApp's messaging layer?",
-  "LLD for a distributed rate limiter",
+  "Design WhatsApp's messaging layer",
+  "Design Netflix's video streaming service",
+  "Design Uber's ride-matching system",
+  "Design a rate limiter",
 ]
 
 export default function ChatPanel() {
@@ -100,7 +105,7 @@ export default function ChatPanel() {
       })
       setSessionId(result.session_id)
 
-      addMessage("assistant", "text", "Session created. Running RAG retrieval… 🔍")
+      addMessage("assistant", "status", "Session created. Running RAG retrieval…", { icon: "search" })
       setSessionStatus("retrieving")
 
       // Step 2: Phase C — trigger RAG retrieval so chunks are stored in the DB
@@ -121,8 +126,9 @@ export default function ChatPanel() {
 
       addMessage(
         "assistant",
-        "text",
-        "Retrieval complete. Starting generation pipeline… 🚀",
+        "status",
+        "Retrieval complete. Starting generation pipeline…",
+        { icon: "rocket" },
       )
       setSessionStatus("generating")
 
@@ -169,7 +175,7 @@ export default function ChatPanel() {
         {isEmpty && (
           <div className="h-full flex flex-col items-center justify-center text-center max-w-xl mx-auto">
             <div className="w-16 h-16 border-2 border-gold mb-6 flex items-center justify-center">
-              <span className="text-gold font-mono text-2xl">S</span>
+              <LogoMark size={30} className="text-gold" />
             </div>
             <h1 className="text-ink-white text-3xl font-light mb-3">
               What System Do You Want To Design?
@@ -192,14 +198,17 @@ export default function ChatPanel() {
           </div>
         )}
 
-        {/* Message list */}
-        {messages.map((msg) => (
-          <ChatMessageItem
-            key={msg.id}
-            message={msg}
-            mcqTemplate={session.mcqTemplate}
-          />
-        ))}
+        {/* Message list — explicit vertical rhythm so rows never collapse
+            into the touching/blank-gap layout seen with unstyled rows */}
+        <div className="space-y-4">
+          {messages.map((msg) => (
+            <ChatMessageItem
+              key={msg.id}
+              message={msg}
+              mcqTemplate={session.mcqTemplate}
+            />
+          ))}
+        </div>
 
         {/* Generate Design button — shown when all MCQs are complete */}
         {session.status === "creating" && (
@@ -207,7 +216,7 @@ export default function ChatPanel() {
             <button
               onClick={handleGenerate}
               disabled={isLoading}
-              className="btn-gold flex items-center gap-2 disabled:opacity-50"
+              className="btn-accent flex items-center gap-2 disabled:opacity-50"
             >
               <ZapIcon className="w-4 h-4" />
               Generate Design
@@ -287,7 +296,7 @@ export default function ChatPanel() {
           <button
             onClick={handleSubmit}
             disabled={!input.trim() || inputDisabled}
-            className="btn-gold p-3 disabled:opacity-40"
+            className="btn-accent-icon p-3"
           >
             <SendHorizontalIcon className="w-5 h-5" />
           </button>

@@ -438,7 +438,9 @@ export interface ArchComponent {
   
   /** Component type */
   type:
+    | 'client'
     | 'frontend'
+    | 'gateway'
     | 'backend'
     | 'database'
     | 'queue'
@@ -447,6 +449,7 @@ export interface ArchComponent {
     | 'auth'
     | 'storage'
     | 'third_party'
+    | 'external'
     | 'ai'
   
   /** Brief description */
@@ -458,7 +461,10 @@ export interface ArchComponent {
   /** Connected component IDs */
   connections: string[]
   
-  /** Technology stack */
+  /** Specific named technology, e.g. "Redis 7", "PostgreSQL 15" */
+  technology?: string
+
+  /** Technology stack (legacy/alternate field — some sections use a list instead) */
   tech_stack?: string[]
   
   /** Scaling strategy */
@@ -466,10 +472,37 @@ export interface ArchComponent {
 }
 
 /**
+ * A directed data/event flow between two components.
+ */
+export interface ArchDataFlow {
+  from: string
+  to: string
+  label?: string
+  protocol?: string
+}
+
+/**
+ * A deployment zone grouping a set of components (CDN / Edge / App Tier / etc).
+ */
+export interface ArchDeploymentZone {
+  zone: string
+  components: string[]
+}
+
+/**
  * Architecture diagram data.
  */
 export interface ArchitectureData {
   components: ArchComponent[]
+
+  /** Directed edges between components, with protocol/label */
+  data_flows?: ArchDataFlow[]
+
+  /** Logical deployment groupings (CDN, Edge, App Tier, Data Tier, External) */
+  deployment_zones?: ArchDeploymentZone[]
+
+  /** Key design decisions with rationale, in order */
+  key_design_decisions?: string[]
   
   /** Optional diagram metadata */
   metadata?: {
@@ -1248,35 +1281,35 @@ export const ARTIFACT_TAB_META: ArtifactTabMeta[] = [
   {
     id: 'diagram',
     label: 'Diagram',
-    icon: '◈',
+    icon: 'workflow',
     section: 'architecture',
     description: 'System architecture and component diagram',
   },
   {
     id: 'capacity',
     label: 'Capacity',
-    icon: '⚡',
+    icon: 'zap',
     section: 'capacity',
     description: 'Capacity estimation and scaling calculations',
   },
   {
     id: 'data_model',
     label: 'Data Model',
-    icon: '⬡',
+    icon: 'database',
     section: 'data_model',
     description: 'Database schema and data model design',
   },
   {
     id: 'api',
     label: 'API',
-    icon: '⟷',
+    icon: 'arrow-left-right',
     section: 'api_design',
     description: 'API endpoints and interface design',
   },
   {
     id: 'stack',
     label: 'Stack',
-    icon: '⎔',
+    icon: 'layers',
     section: 'stack',
     description: 'Technology stack recommendations',
   },
@@ -1297,7 +1330,9 @@ export const SECTION_NAMES: Record<SectionId, string> = {
  * Component type colors.
  */
 export const COMPONENT_COLORS: Record<ArchComponent['type'], string> = {
+  client: 'bg-blue-500',
   frontend: 'bg-blue-500',
+  gateway: 'bg-teal-500',
   backend: 'bg-cyan-500',
   database: 'bg-yellow-500',
   queue: 'bg-purple-500',
@@ -1306,6 +1341,7 @@ export const COMPONENT_COLORS: Record<ArchComponent['type'], string> = {
   auth: 'bg-orange-500',
   storage: 'bg-pink-500',
   third_party: 'bg-indigo-500',
+  external: 'bg-indigo-500',
   ai: 'bg-red-500',
 } as const
 

@@ -1,6 +1,5 @@
-@import "tailwindcss";
-
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
+@import "tailwindcss";
 
 @theme {
   /* ── Lamborghini design system tokens ────────────────────────────── */
@@ -158,6 +157,16 @@
            transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
   }
   .btn-accent:hover:not(:disabled) {
+    @apply bg-gold-dark;
+  }
+
+  /* Icon-only Gold Accent — same brand fill as .btn-accent but square,
+     compact padding (send button, etc.) instead of the CTA's px-6/py-3. */
+  .btn-accent-icon {
+    @apply inline-flex items-center justify-center bg-gold text-surface-black
+           rounded-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-accent-icon:hover:not(:disabled) {
     @apply bg-gold-dark;
   }
 

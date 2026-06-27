@@ -1,15 +1,25 @@
 "use client"
+import {
+  WorkflowIcon,
+  ZapIcon,
+  DatabaseIcon,
+  ArrowLeftRightIcon,
+  LayersIcon,
+  LockIcon,
+  type LucideIcon,
+} from "lucide-react"
 import { useStore } from "@/store/useStore"
+import DiagramFlow from "./DiagramFlow"
 import type { ArtifactTab, ArchitectureData, CapacityData, DataModelData, ApiDesignData, StackData } from "@/types"
 
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
-const TABS: { id: ArtifactTab; label: string; icon: string }[] = [
-  { id: "diagram",     label: "Diagram",    icon: "◈" },
-  { id: "capacity",    label: "Capacity",   icon: "⚡" },
-  { id: "data_model",  label: "Data Model", icon: "⬡" },
-  { id: "api",         label: "API",        icon: "⟷" },
-  { id: "stack",       label: "Stack",      icon: "⎔" },
+const TABS: { id: ArtifactTab; label: string; icon: LucideIcon }[] = [
+  { id: "diagram",     label: "Diagram",    icon: WorkflowIcon },
+  { id: "capacity",    label: "Capacity",   icon: ZapIcon },
+  { id: "data_model",  label: "Data Model", icon: DatabaseIcon },
+  { id: "api",         label: "API",        icon: ArrowLeftRightIcon },
+  { id: "stack",       label: "Stack",      icon: LayersIcon },
 ]
 
 // Map from ArtifactTab id to the artifact state key holding that section's data
@@ -38,6 +48,7 @@ export default function ArtifactPanel() {
           const hasData = Boolean(artifact[TAB_DATA_KEY[tab.id]])
           const isLoading = Boolean(artifact.loading?.[tab.id])
           const isActive = artifact.activeTab === tab.id
+          const Icon = tab.icon
 
           return (
             <button
@@ -45,6 +56,7 @@ export default function ArtifactPanel() {
               onClick={() => setArtifactTab(tab.id)}
               className={`
                 flex-1 py-3 px-2 text-xs font-mono uppercase tracking-wider transition-colors relative
+                flex items-center justify-center gap-1.5
                 ${isActive
                   ? "text-gold border-b-2 border-gold bg-ink-charcoal"
                   : "text-ink-steel hover:text-ink-ash"}
@@ -58,7 +70,7 @@ export default function ArtifactPanel() {
               {!isLoading && hasData && !isActive && (
                 <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
               )}
-              <span className="mr-1">{tab.icon}</span>
+              <Icon className="w-3.5 h-3.5" />
               {tab.label}
             </button>
           )
@@ -188,6 +200,9 @@ function DiagramView({ data }: { data: ArchitectureData & Record<string, any> })
         <h2 className="text-gold font-mono text-sm uppercase tracking-wider">Architecture Components</h2>
         <span className="text-ink-steel text-xs">{components.length} components</span>
       </div>
+
+      {/* Interactive React Flow diagram */}
+      <DiagramFlow data={data} />
 
       {/* Component cards */}
       <div className="space-y-3">
@@ -532,10 +547,14 @@ function ApiView({ data }: { data: ApiDesignData & Record<string, any> }) {
               </span>
               <span className="text-ink-white font-mono text-sm">{ep.path}</span>
               {ep.auth_required != null && (
-                <Badge
-                  label={ep.auth_required ? "🔒 auth" : "public"}
-                  color={ep.auth_required ? "text-orange-400 bg-ink-graphite" : "text-green-400 bg-ink-graphite"}
-                />
+                <span
+                  className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 ${
+                    ep.auth_required ? "text-orange-400 bg-ink-graphite" : "text-green-400 bg-ink-graphite"
+                  }`}
+                >
+                  {ep.auth_required && <LockIcon className="w-2.5 h-2.5" />}
+                  {ep.auth_required ? "auth" : "public"}
+                </span>
               )}
             </div>
             <p className="text-ink-ash text-xs leading-relaxed">{ep.description}</p>

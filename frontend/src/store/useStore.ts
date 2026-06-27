@@ -607,7 +607,7 @@ export const useStore = create<Store>()(
               makeMessage(
                 "assistant",
                 "status",
-                `🔄 Generating **${SECTION_NAMES[event.section]}**…`,
+                `Generating **${SECTION_NAMES[event.section]}**…`,
                 {
                   section: event.section,
                   sectionStatus: "started",
@@ -655,16 +655,40 @@ export const useStore = create<Store>()(
               }
             }
 
-            // Update the status message
-            const lastMsg = state.messages[state.messages.length - 1]
-            if (lastMsg?.metadata?.section === event.section) {
-              lastMsg.type = "text"
-              lastMsg.content = `✅ **${SECTION_NAMES[event.section]}** complete — ${event.tokens_used} tokens, ${event.duration_ms}ms${event.cached ? " (cached)" : ""}`
-              lastMsg.metadata = {
+            // Update the status message — search for the matching
+            // "started" status message rather than assuming it's the
+            // last message in the list. Sections can be batched (e.g.
+            // capacity + data_model fire their "start" events back to
+            // back before either "done" arrives), so the most recent
+            // message for THIS section may not be at the array tail.
+            const startedMsg = [...state.messages].reverse().find(
+              (m) =>
+                m.type === "status" &&
+                m.metadata?.section === event.section &&
+                m.metadata?.sectionStatus === "started",
+            )
+            if (startedMsg) {
+              startedMsg.content = `**${SECTION_NAMES[event.section]}** complete — ${event.tokens_used} tokens, ${event.duration_ms}ms${event.cached ? " (cached)" : ""}`
+              startedMsg.metadata = {
+                ...startedMsg.metadata,
                 section: event.section,
                 sectionStatus: "complete",
                 completedAt: event.timestamp,
               }
+            } else {
+              // Fallback — no matching started message found, append a new one
+              state.messages.push(
+                makeMessage(
+                  "assistant",
+                  "status",
+                  `**${SECTION_NAMES[event.section]}** complete — ${event.tokens_used} tokens, ${event.duration_ms}ms${event.cached ? " (cached)" : ""}`,
+                  {
+                    section: event.section,
+                    sectionStatus: "complete",
+                    completedAt: event.timestamp,
+                  },
+                ),
+              )
             }
             break
 
@@ -679,17 +703,33 @@ export const useStore = create<Store>()(
               }
             }
 
-            state.messages.push(
-              makeMessage(
-                "assistant",
-                "error",
-                `❌ Error generating ${SECTION_NAMES[event.section]}: ${event.error}`,
-                {
-                  section: event.section,
-                  sectionStatus: "error",
-                },
-              ),
+            const startedErrMsg = [...state.messages].reverse().find(
+              (m) =>
+                m.type === "status" &&
+                m.metadata?.section === event.section &&
+                m.metadata?.sectionStatus === "started",
             )
+            if (startedErrMsg) {
+              startedErrMsg.type = "error"
+              startedErrMsg.content = `Error generating ${SECTION_NAMES[event.section]}: ${event.error}`
+              startedErrMsg.metadata = {
+                ...startedErrMsg.metadata,
+                section: event.section,
+                sectionStatus: "error",
+              }
+            } else {
+              state.messages.push(
+                makeMessage(
+                  "assistant",
+                  "error",
+                  `Error generating ${SECTION_NAMES[event.section]}: ${event.error}`,
+                  {
+                    section: event.section,
+                    sectionStatus: "error",
+                  },
+                ),
+              )
+            }
             break
 
           case "pipeline.done":
@@ -709,8 +749,9 @@ export const useStore = create<Store>()(
         state.messages.push(
           makeMessage(
             "assistant",
-            "text",
-            "🎉 **Design generation complete!** All sections are now available in the artifact panel. You can switch between tabs to explore the architecture, capacity estimates, data model, API design, and tech stack recommendations.",
+            "status",
+            "**Design generation complete!** All sections are now available in the artifact panel. You can switch between tabs to explore the architecture, capacity estimates, data model, API design, and tech stack recommendations.",
+            { icon: "sparkles" },
           ),
         )
 
@@ -734,7 +775,7 @@ export const useStore = create<Store>()(
           makeMessage(
             "assistant",
             "error",
-            `❌ Generation failed: ${error}${errorCode ? ` (Code: ${errorCode})` : ""}`,
+            `Generation failed: ${error}${errorCode ? ` (Code: ${errorCode})` : ""}`,
           ),
         )
       }),
