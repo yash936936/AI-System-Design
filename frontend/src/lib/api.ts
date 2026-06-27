@@ -380,9 +380,13 @@ function parseSSEEvent(raw: string): SSEEvent | null {
 
   try {
     const parsed = JSON.parse(data)
+    // The backend sets `type` inside the JSON payload (e.g. "section.done").
+    // The SSE `event:` line is NOT sent by the backend, so `eventType` stays
+    // "message". We must NOT overwrite the JSON `type` with that default.
+    // Correct merge: SSE event-line type only wins when the JSON has no `type`.
     return {
-      ...parsed,
       type: eventType,
+      ...parsed,
     } as SSEEvent
   } catch (err) {
     console.error("Failed to parse SSE event:", err, raw)
