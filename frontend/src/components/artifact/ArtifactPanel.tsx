@@ -6,6 +6,8 @@ import {
   ArrowLeftRightIcon,
   LayersIcon,
   LockIcon,
+  XIcon,
+  PanelRightOpenIcon,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/store/useStore"
@@ -32,9 +34,25 @@ const TAB_DATA_KEY: Record<ArtifactTab, keyof ReturnType<typeof useStore.getStat
 }
 
 export default function ArtifactPanel() {
-  const { artifact, setArtifactTab } = useStore()
+  const { artifact, setArtifactTab, setArtifactVisible } = useStore()
 
-  if (!artifact.isVisible) return null
+  // Collapsed state — the panel was never opened yet, or the user closed it.
+  // Previously this returned `null`, which removed every button along with
+  // it, so once hidden there was no way to bring the panel back. Render a
+  // slim reopen strip instead so the user always has a way back in.
+  if (!artifact.isVisible) {
+    return (
+      <div className="h-full w-12 bg-ink-black border-l border-ink-graphite flex flex-col items-center pt-4 shrink-0">
+        <button
+          onClick={() => setArtifactVisible(true)}
+          title="Open design artifacts"
+          className="p-2 text-ink-steel hover:text-gold hover:bg-ink-charcoal transition-colors rounded"
+        >
+          <PanelRightOpenIcon className="w-5 h-5" />
+        </button>
+      </div>
+    )
+  }
 
   const activeData = artifact[TAB_DATA_KEY[artifact.activeTab]]
   const activeLoading = artifact.loading?.[artifact.activeTab]
@@ -42,6 +60,18 @@ export default function ArtifactPanel() {
 
   return (
     <div className="w-[480px] h-full bg-ink-black border-l border-ink-graphite flex flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-graphite shrink-0">
+        <span className="text-ink-ash text-xs font-mono uppercase tracking-wider">Design Artifacts</span>
+        <button
+          onClick={() => setArtifactVisible(false)}
+          title="Close artifact panel"
+          className="p-1 text-ink-steel hover:text-ink-white hover:bg-ink-charcoal transition-colors rounded"
+        >
+          <XIcon className="w-4 h-4" />
+        </button>
+      </div>
+
       {/* Tab bar */}
       <div className="flex border-b border-ink-graphite shrink-0">
         {TABS.map((tab) => {
