@@ -1,67 +1,138 @@
+import asyncio
+import hashlib
 import json
 import time
 import logging
 from typing import Any
-from app.core.config import settings
+
+import google.generativeai as genai
+from app.core.config import get_settings
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
-try:
-    import google.generativeai as genai
-    GEMINI_AVAILABLE = True
-    if settings.GEMINI_API_KEY:
-        genai.configure(api_key=settings.GEMINI_API_KEY)
-except ImportError:
-    GEMINI_AVAILABLE = False
+# ── Initialise SDK ─────────────────────────────────────────────────────────────
+if settings.gemini_api_key:
+    genai.configure(api_key=settings.gemini_api_key)
+else:
+    logger.warning("GEMINI_API_KEY is not set. Gemini calls will fail.")
 
-_cache: dict[str, dict] = {}
+# ── Rate limit: 14 concurrent calls per 60s window ────────────────────────────
+_rpm_semaphore = asyncio.Semaphore(settings.gemini_max_rpm)
+_rpm_window_start: float = time.monotonic()
+_rpm_call_count: int = 0
 
-async def gemini_generate(prompt: str, system_prompt: str = "", json_mode: bool = True, use_cache: bool = True) -> dict[str, Any]:
-    start_time = time.time()
-    cache_key = f"{system_prompt[:100]}:{prompt[:200]}"
-    
-    if use_cache and cache_key in _cache:
-        cached = _cache[cache_key].copy()
-        cached["cached"] = True
-        cached["duration_ms"] = 0
-        return cached
+# ── Simple in-memory cache ────────────────────────────────────────────────────
+_response_cache: dict[str, tuple[Any, float]] = {}
+_CACHE_TTL_SECONDS = 86400  # 24 hours
 
-    if not GEMINI_AVAILABLE or not settings.GEMINI_API_KEY:
-        return _get_mock_response(prompt, start_time, cache_key, use_cache)
+def _cache_key(model: str, prompt: str) -> str:
+    raw = f"{model}::{prompt}"
+    return hashlib.sha256(raw.encode()).hexdigest()
 
-    try:
+def _get_cached(key: str) -> Any | None:
+    if key in _response_cache:
+        value, ts = _response_cache[key]
+        if time.monotonic() - ts < _CACHE_TTL_SECONDS:
+            return value
+        del _response_cache[key]
+    return None
+
+def _set_cached(key: str, value: Any) -> None:
+    _response_cache[key] = (value, time.monotonic())
+
+# ── Core call wrapper ──────────────────────────────────────────────────────────
+async def gemini_generate(
+    prompt: str,
+    system_prompt: str = "",
+    json_mode: bool = True,
+    use_cache: bool = True,
+) -> dict[str, Any]:
+    full_prompt = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+    cache_key = _cache_key(settings.gemini_model, full_prompt)
+
+    if use_cache:
+        cached = _get_cached(cache_key)
+        if cached:
+            logger.info("gemini_generate: cache hit")
+            return {**cached, "cached": True}
+
+    async with _rpm_semaphore:
+        global _rpm_window_start, _rpm_call_count
+        now = time.monotonic()
+        if now - _rpm_window_start >= 60:
+            _rpm_window_start = now
+            _rpm_call_count = 0
+        _rpm_call_count += 1
+
+        generation_config = genai.GenerationConfig(
+            response_mime_type="application/json" if json_mode else "text/plain",
+        )
+
         model = genai.GenerativeModel(
-            model_name=settings.GEMINI_MODEL,
+            model_name=settings.gemini_model,
+            generation_config=generation_config,
             system_instruction=system_prompt if system_prompt else None,
         )
-        gen_config = {"response_mime_type": "application/json"} if json_mode else {}
-        response = model.generate_content(prompt, generation_config=gen_config)
-        
-        parsed = {}
-        if response.text:
-            try: parsed = json.loads(response.text)
-            except json.JSONDecodeError: parsed = {"raw": response.text}
-            
-        tokens_in = getattr(response.usage_metadata, "prompt_token_count", 0) if hasattr(response, "usage_metadata") else 0
-        tokens_out = getattr(response.usage_metadata, "candidates_token_count", 0) if hasattr(response, "usage_metadata") else 0
-        
-        result = {"parsed": parsed, "tokens_in": tokens_in, "tokens_out": tokens_out, "duration_ms": int((time.time() - start_time) * 1000), "cached": False}
-        if use_cache: _cache[cache_key] = result.copy()
-        return result
-    except Exception as e:
-        logger.exception("Gemini API failed")
-        raise RuntimeError(f"Gemini generation failed: {str(e)}")
 
-def _get_mock_response(prompt: str, start_time: float, cache_key: str, use_cache: bool) -> dict[str, Any]:
-    p = prompt.lower()
-    if "architecture" in p and "capacity" not in p:
-        parsed = {"components": [{"id": "api_gateway", "name": "API Gateway", "type": "backend", "description": "Routes requests", "responsibilities": ["routing"], "connections": ["db"]}, {"id": "db", "name": "Database", "type": "database", "description": "Stores data", "responsibilities": ["persistence"], "connections": []}]}
-    elif "capacity" in p:
-        parsed = {"capacity": {"dau": 1000000, "peak_read_qps": 1000, "peak_write_qps": 100, "daily_storage_gb": 50, "five_year_storage_tb": 90, "bandwidth_gbps": 0.5, "cache_dataset_gb": 20, "formulas": {"peak_read_qps": "1M * 100 / 86400"}}, "data_model": {"decision": "SQL", "rationale": "ACID compliance needed", "entities": [{"name": "users", "columns": [{"name": "id", "type": "UUID", "primary": True}], "sharding_key": None, "access_patterns": ["Read by ID"]}]}}
-    elif "api" in p:
-        parsed = {"api_design": {"style": "REST", "auth": "JWT", "endpoints": [{"method": "GET", "path": "/v1/users", "description": "Get users", "response": {"users": "array"}}]}, "stack": {"layers": [{"layer": "database", "primary": "PostgreSQL", "alternatives": ["MySQL"], "rationale": "Relational data", "trade_off": "Harder to scale"}]}}
-    else: parsed = {}
-    
-    result = {"parsed": parsed, "tokens_in": 100, "tokens_out": 50, "duration_ms": int((time.time() - start_time) * 1000), "cached": False}
-    if use_cache: _cache[cache_key] = result.copy()
-    return result
+        t0 = time.monotonic()
+        try:
+            loop = asyncio.get_running_loop()
+            response = await loop.run_in_executor(
+                None,
+                lambda: model.generate_content(prompt)
+            )
+        except Exception as e:
+            logger.error(f"Gemini API call failed: {e}")
+            raise
+
+        duration_ms = int((time.monotonic() - t0) * 1000)
+        raw_text = response.text
+        
+        # Safe token extraction
+        usage = getattr(response, 'usage_metadata', None)
+        tokens_in = usage.prompt_token_count if usage else 0
+        tokens_out = usage.candidates_token_count if usage else 0
+
+        parsed = None
+        if json_mode:
+            try:
+                parsed = json.loads(raw_text)
+            except json.JSONDecodeError:
+                clean = raw_text.strip()
+                if clean.startswith("```json"): clean = clean[7:]
+                elif clean.startswith("```"): clean = clean[3:]
+                if clean.endswith("```"): clean = clean[:-3]
+                clean = clean.strip()
+                
+                try:
+                    parsed = json.loads(clean)
+                except json.JSONDecodeError as e:
+                    logger.error(f"Failed to parse JSON from Gemini: {e}\nRaw text: {raw_text}")
+                    parsed = None
+
+        result = {
+            "text": raw_text,
+            "parsed": parsed,
+            "tokens_in": tokens_in,
+            "tokens_out": tokens_out,
+            "duration_ms": duration_ms,
+            "cached": False,
+        }
+
+        if use_cache and parsed is not None:
+            _set_cached(cache_key, result)
+
+        return result
+
+async def gemini_embed(text: str) -> list[float]:
+    loop = asyncio.get_running_loop()
+    result = await loop.run_in_executor(
+        None,
+        lambda: genai.embed_content(
+            model=settings.gemini_embed_model,
+            content=text,
+            task_type="retrieval_query",
+        )
+    )
+    return result["embedding"]

@@ -1,114 +1,83 @@
-from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel
+from typing import Optional, Literal, Any
+from uuid import UUID
+from datetime import datetime
 
-class ClassifyRequest(BaseModel):
-    prompt: str = Field(..., min_length=5, max_length=2000)
-
-class ClassifyResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    type: str
-    confidence: float
-    reasoning: str
-    suggested_correction: Optional[str] = None
-    keywords: List[str] = Field(default_factory=list)
-
-class MCQOption(BaseModel):
-    id: str
-    label: str
-    description: Optional[str] = None
-    recommended: bool = False
-
-class MCQCategory(BaseModel):
-    id: str
-    label: str
-    question: str
-    type: str
-    options: List[MCQOption]
-    allow_free_text: bool = False
-    free_text_placeholder: str = ""
-
-class MCQTemplate(BaseModel):
-    design_type: str
-    categories: List[MCQCategory]
-    version: str = "1.0"
-
-class SessionContext(BaseModel):
-    system_name: Optional[str] = None
-    functional_reqs: List[str] = Field(default_factory=list)
-    out_of_scope: List[str] = Field(default_factory=list)
-    user_actors: List[str] = Field(default_factory=list)
-    read_write_ratio: Optional[str] = None
-    scale: Optional[str] = None
-    dau: Optional[str] = None
-    availability: Optional[str] = None
-    consistency: Optional[str] = None
-    latency_target: Optional[str] = None
-    request_size_category: Optional[str] = None
-    data_model_preference: Optional[str] = None
-    api_style: Optional[str] = None
-    architecture_approach: Optional[str] = None
-    bottleneck_focus: List[str] = Field(default_factory=list)
-    scalability_priority: Optional[str] = None
-    trade_off_priority: Optional[str] = None
-    custom_requirements: Optional[Dict[str, str]] = None
-
+# ── Session ───────────────────────────────────────────────────────────────────
 class CreateSessionRequest(BaseModel):
     prompt: str
-    design_type: str
-    context: SessionContext
-
-class RetrievedDesign(BaseModel):
-    id: str
-    name: str
-    type: str
-    score: float
-    components: List[str] = Field(default_factory=list)
-    source: Optional[str] = None
-    summary: Optional[str] = None
+    system_name: Optional[str] = None
+    design_type: Optional[Literal["hld", "lld"]] = None
 
 class CreateSessionResponse(BaseModel):
-    session_id: str
+    session_id: UUID
     retrieve_url: str
     stream_url: str
     status: str
-    design_type: str
-    retrieved_designs: List[RetrievedDesign] = Field(default_factory=list)
-    created_at: float
-
-class FamousSystemSchema(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-    id: str
-    name: str
-    slug: str
-    description: str
-    design_type: str
-    key_components: List[str] = Field(default_factory=list)
-    architecture_summary: Optional[str] = None
-    tags: List[str] = Field(default_factory=list)
-
-class SectionOutput(BaseModel):
-    section: str
-    status: str
-    payload: Optional[Dict[str, Any]] = None
-    tokens_used: Optional[int] = None
-    duration_ms: Optional[int] = None
-    cached: bool = False
 
 class SessionResponse(BaseModel):
-    session_id: str
+    id: UUID
     prompt: str
-    design_type: str
+    system_name: Optional[str] = None
+    design_type: Optional[str] = None
     status: str
-    context: Dict[str, Any]
-    sections: Dict[str, SectionOutput] = Field(default_factory=dict)
-    created_at: float
-    completed_at: Optional[float] = None
-    total_tokens: int = 0
-    total_duration_ms: int = 0
+    created_at: datetime
 
-class GenerationStatusResponse(BaseModel):
-    session_id: str
-    session_status: str
-    sections: Dict[str, Dict[str, Any]]
-    total_tokens: int = 0
-    total_duration_ms: int = 0
+# ── Phase A: Classify ─────────────────────────────────────────────────────────
+class ClassifyRequest(BaseModel):
+    prompt: str
+
+class ClassifyResponse(BaseModel):
+    type: Literal["hld", "lld", "unknown"]
+    confidence: float
+    reasoning: str
+
+# ── Phase B: MCQ ──────────────────────────────────────────────────────────────
+class MCQQuestion(BaseModel):
+    question: str
+    options: list[str]
+    correct_answer: str
+
+class MCQTemplate(BaseModel):
+    design_type: str
+    questions: list[MCQQuestion]
+
+# ── Phase C: Retrieval ────────────────────────────────────────────────────────
+class RagChunk(BaseModel):
+    id: str
+    source: str
+    section: str
+    text: str
+    score: float
+
+class RetrievalResponse(BaseModel):
+    session_id: UUID
+    query: str
+    chunks: list[RagChunk]
+    max_score: float
+    used_web_fallback: bool
+    famous_design_matched: Optional[str] = None
+
+# ── Phase D: Generation ───────────────────────────────────────────────────────
+class SSEEvent(BaseModel):
+    section: str
+    status: str
+    payload: Optional[dict[str, Any]] = None
+    tokens_used: int = 0
+    cached: bool = False
+    duration_ms: int = 0
+    error: Optional[str] = None
+
+# ── Phase 6: Export ───────────────────────────────────────────────────────────
+class ExportRequest(BaseModel):
+    format: Literal["pdf", "md", "json"]
+    sections: list[str] = ["architecture", "capacity", "data_model", "api_design", "stack"]
+
+class ExportResponse(BaseModel):
+    id: UUID
+    session_id: UUID
+    format: str
+    sections: list[str]
+    download_url: str
+    expires_at: datetime
+    created_at: datetime

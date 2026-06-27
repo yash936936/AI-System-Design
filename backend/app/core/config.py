@@ -5,19 +5,31 @@ from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
-    APP_NAME: str = Field(default="SysDesign AI")
-    DEBUG: bool = Field(default=True)
-    DATABASE_URL: str = Field(default="sqlite+aiosqlite:///./sysdesign.db")
-    GEMINI_API_KEY: str = Field(default="")
-    GEMINI_MODEL: str = Field(default="gemini-2.5-flash")
-    CORS_ORIGINS: List[str] = Field(default=["http://localhost:3000"])
-    
+    # App
+    app_name: str = "SysDesign AI"
+    debug: bool = True
+
+    # Database (Async SQLite)
+    database_url: str = "sqlite+aiosqlite:///./sysdesign.db"
+
+    # Gemini (Reads GEMINI_API_KEY from .env automatically)
+    gemini_api_key: str = ""
+    gemini_max_rpm: int = 14
+    gemini_model: str = "gemini-2.5-flash"
+    gemini_embed_model: str = "models/embedding-001"
+
+    # RAG / Chroma
+    chroma_host: str = "localhost"
+    chroma_port: int = 8000
+
     model_config = SettingsConfigDict(
-        env_file=".env", env_file_encoding="utf-8", case_sensitive=True, extra="ignore"
+        env_file=".env", 
+        env_file_encoding="utf-8", 
+        extra="ignore",
+        case_sensitive=False
     )
 
-@lru_cache()
-def get_settings() -> Settings:
-    return Settings()
+_settings = Settings()
 
-settings = get_settings()
+def get_settings() -> Settings:
+    return _settings
