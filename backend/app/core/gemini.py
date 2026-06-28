@@ -125,14 +125,21 @@ async def gemini_generate(
 
         return result
 
-async def gemini_embed(text: str) -> list[float]:
+async def gemini_embed(text: str, task_type: str = "retrieval_query") -> list[float]:
+    """
+    task_type: "retrieval_document" when embedding content going INTO the
+    vector store (e.g. famous-design ingestion), "retrieval_query" when
+    embedding a search query going against it — Gemini's embedding model
+    is asymmetric and indexes/queries embedded with the matching task_type
+    retrieve noticeably better than embedding everything the same way.
+    """
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
         None,
         lambda: genai.embed_content(
             model=settings.gemini_embed_model,
             content=text,
-            task_type="retrieval_query",
+            task_type=task_type,
         )
     )
     return result["embedding"]

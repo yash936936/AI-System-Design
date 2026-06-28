@@ -22,6 +22,12 @@ class Settings(BaseSettings):
     # RAG / Chroma
     chroma_host: str = "localhost"
     chroma_port: int = 8000
+    # Local on-disk path for chromadb.PersistentClient — no external Chroma
+    # server is documented/required anywhere in this repo, so the vector
+    # store follows the same "zero-config dev" pattern as the SQLite
+    # database_url default above. chroma_host/chroma_port are kept for a
+    # future HttpClient-based deployment but are currently unused.
+    chroma_persist_dir: str = "./chroma_data"
 
     # Auth — shared secret between Next.js bridge and FastAPI token verifier.
     # Must match INTERNAL_AUTH_SECRET in the frontend .env.local.

@@ -39,6 +39,10 @@ import type {
   SSEEvent,
   SectionId,
   SectionPayload,
+  SectionResult,
+  
+  // Session loading (history → artifact reload)
+  GetSessionResponse,
   
   // Section data types
   ArchitectureData,
@@ -251,6 +255,13 @@ interface Store {
   
   /** Remove session from history */
   removeFromHistory: (id: string) => void
+
+  /** Reload a past session's chat + artifact state from a GET /api/sessions/{id}
+   *  response — used when a sidebar history item is clicked. The fetch
+   *  itself happens in the component (matching how every other API call in
+   *  this store is invoked); this action just applies the already-fetched
+   *  result, consistent with setClassification / setMcqTemplate etc. */
+  loadSession: (data: GetSessionResponse, title: string) => void
   
   // ── Message Actions ─────────────────────────────────────────────────────
   
@@ -485,6 +496,63 @@ export const useStore = create<Store>()(
           )
         } catch (err) {
           console.error("Failed to save session history:", err)
+        }
+      }),
+
+    loadSession: (data, title) =>
+      set((state) => {
+        const sectionEntries = Object.entries(data.sections) as [SectionId, SectionResult][]
+        const hasSections = sectionEntries.length > 0
+
+        state.session = {
+          ...EMPTY_SESSION,
+          id: data.session_id,
+          prompt: title,
+          designType: data.design_type,
+          context: { ...EMPTY_SESSION.context, ...data.context },
+          status: data.status,
+          createdAt: data.created_at,
+          completedAt: data.completed_at,
+        }
+
+        state.messages = [
+          makeMessage("user", "text", title),
+          makeMessage(
+            "assistant",
+            "status",
+            hasSections
+              ? `**Loaded from history.** Reopened this ${data.design_type ?? ""} session — switch tabs in the artifact panel to review it.`
+              : "This session doesn't have a generated design yet.",
+            { icon: "sparkles" },
+          ),
+        ]
+
+        state.artifact = {
+          activeTab: ARTIFACT_TABS.DIAGRAM,
+          isVisible: hasSections,
+          loading: {},
+          errors: {},
+        }
+
+        for (const [sectionId, result] of sectionEntries) {
+          if (!result?.payload) continue
+          switch (sectionId) {
+            case "architecture":
+              state.artifact.diagram = result.payload as ArchitectureData
+              break
+            case "capacity":
+              state.artifact.capacity = result.payload as CapacityData
+              break
+            case "data_model":
+              state.artifact.data_model = result.payload as DataModelData
+              break
+            case "api_design":
+              state.artifact.api = result.payload as ApiDesignData
+              break
+            case "stack":
+              state.artifact.stack = result.payload as StackData
+              break
+          }
         }
       }),
 
@@ -742,7 +810,7 @@ export const useStore = create<Store>()(
         }
       }),
 
-    handleStreamDone: () =>
+    handleStreamDone: () => {
       set((state) => {
         state.session.status = SESSION_STATUS.COMPLETE
         state.session.completedAt = Date.now()
@@ -754,17 +822,25 @@ export const useStore = create<Store>()(
             { icon: "sparkles" },
           ),
         )
+      })
 
-        // Add to history
-        const historyItem: SessionHistoryItem = {
-          id: state.session.id || makeId(),
-          title: state.session.prompt.slice(0, 50),
-          date: new Date().toISOString(),
-          designType: state.session.designType,
-          status: SESSION_STATUS.COMPLETE,
-        }
-        state.sessionHistory.unshift(historyItem)
-      }),
+      // Deliberately a *second*, separate set() call rather than nesting
+      // get().addToHistory(...) inside the producer above: immer's set()
+      // finalizes its draft against the state snapshot it started with, so
+      // calling another top-level set() from inside that same producer
+      // would get silently overwritten the moment the outer one commits.
+      // Sequencing them — finish the first set(), then read fresh state via
+      // get(), then run addToHistory as its own commit — avoids that.
+      const { session } = get()
+      const historyItem: SessionHistoryItem = {
+        id: session.id || makeId(),
+        title: session.prompt.slice(0, 50),
+        date: new Date().toISOString(),
+        designType: session.designType,
+        status: SESSION_STATUS.COMPLETE,
+      }
+      get().addToHistory(historyItem)
+    },
 
     handleStreamError: (error: string, errorCode?: string) =>
       set((state) => {

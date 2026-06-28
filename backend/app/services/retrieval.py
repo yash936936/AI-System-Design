@@ -1,67 +1,109 @@
+import asyncio
 import logging
 from datetime import datetime, timezone
 from uuid import UUID
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from app.core.config import get_settings
+from app.core.gemini import gemini_embed
 from app.schemas.schemas import RetrievalResponse, RagChunk
-from app.db.models import RagRetrieval
+from app.db.models import RagRetrieval, FamousDesign
 from app.services.session import get_session
+from app.services.vector_store import get_famous_designs_collection
 
 logger = logging.getLogger(__name__)
+settings = get_settings()
 
-# ── Famous systems mock catalog ─────────────────────────────────────────────────
-# `famous.py` imports `list_famous_systems` / `get_famous_system` from this
-# module, but neither function existed here before — every call to
-# GET /api/famous or /api/famous/{slug} raised an ImportError at import time,
-# which means the whole app failed to start (main.py imports famous.py's
-# router transitively). Defining them here (and registering the router in
-# main.py — see below) fixes both the ImportError and the missing routes.
-_FAMOUS_SYSTEMS: dict[str, dict] = {
-    "twitter": {
-        "system_name": "twitter", "title": "Twitter / X Timeline & Fan-out",
-        "canonical_json": {
-            "components": ["Tweet Service", "Fan-out Service", "Timeline Cache", "Graph Service"],
-        },
-        "diagram_json": {},
-        "key_insights": [
-            "Fan-out-on-write for most users; fan-out-on-read (pull) for celebrities with huge follower counts",
-            "Redis-backed timeline cache to avoid recomputing feeds on every read",
-        ],
-        "sources": ["https://systeminterview.com/design-twitter.php"],
-        "last_updated": "2024-01-01T00:00:00Z",
-    },
-    "netflix": {
-        "system_name": "netflix", "title": "Netflix Video Streaming",
-        "canonical_json": {
-            "components": ["Open Connect CDN", "Encoding Pipeline", "Metadata Service", "Recommendation Service"],
-        },
-        "diagram_json": {},
-        "key_insights": [
-            "Open Connect: Netflix's own CDN, deployed inside ISP networks",
-            "Pre-transcodes video into many bitrate/codec variants for adaptive streaming",
-        ],
-        "sources": ["https://netflixtechblog.com"],
-        "last_updated": "2024-01-01T00:00:00Z",
-    },
-    "uber": {
-        "system_name": "uber", "title": "Uber Ride Matching",
-        "canonical_json": {
-            "components": ["Location Service", "Geo-Sharded Dispatch", "Pricing Service", "Trip Service"],
-        },
-        "diagram_json": {},
-        "key_insights": [
-            "Geohashing / H3 grid for efficient driver-rider proximity search",
-            "Separate, eventually-consistent pricing computation to avoid blocking dispatch",
-        ],
-        "sources": ["https://eng.uber.com"],
-        "last_updated": "2024-01-01T00:00:00Z",
-    },
-}
+# ── Famous systems catalog ───────────────────────────────────────────────────
+# Previously this module kept a hardcoded `_FAMOUS_SYSTEMS` dict (twitter /
+# netflix / uber only) and matched it against the query with a plain
+# substring check. Famous-design records now live in the `famous_designs`
+# SQL table (see db/models.py — populated by scripts/ingest_famous_designs.py)
+# for the structured GET /api/famous routes below, and in the Chroma
+# `famous_designs` collection (same ingest script) for the semantic-search
+# fast path inside retrieve_context(). Run the ingest script before relying
+# on either — both list_famous_systems() and the vector search degrade
+# gracefully (empty list / no famous match) if it hasn't been run yet.
 
-def list_famous_systems() -> list[dict]:
-    return list(_FAMOUS_SYSTEMS.values())
+async def list_famous_systems(db: AsyncSession) -> list[dict]:
+    result = await db.execute(select(FamousDesign))
+    rows = result.scalars().all()
+    return [_design_to_dict(r) for r in rows]
 
-def get_famous_system(slug: str) -> dict | None:
-    return _FAMOUS_SYSTEMS.get(slug.lower())
+async def get_famous_system(db: AsyncSession, slug: str) -> dict | None:
+    result = await db.execute(
+        select(FamousDesign).where(FamousDesign.system_name == slug.lower().strip())
+    )
+    row = result.scalar_one_or_none()
+    return _design_to_dict(row) if row else None
+
+def _design_to_dict(row: FamousDesign) -> dict:
+    return {
+        "system_name": row.system_name,
+        "title": row.title,
+        "diagram_json": row.diagram_json or {},
+        "canonical_json": row.canonical_json or {},
+        "key_insights": row.key_insights or [],
+        "sources": row.sources or [],
+        "last_updated": row.last_updated,
+    }
+
+# ── Vector search ─────────────────────────────────────────────────────────────
+
+_FAMOUS_MATCH_THRESHOLD = 0.55  # cosine similarity below this isn't a confident match
+
+async def _search_famous_designs(query: str) -> tuple[RagChunk | None, str | None]:
+    """Embed `query` and search the Chroma `famous_designs` collection for
+    a matching famous system. Returns (chunk, system_name) or (None, None)
+    if nothing confident was found (empty collection, low score, or any
+    failure along the way — this must never be allowed to break retrieval
+    for everyone just because a vector lookup had a bad day)."""
+    if not settings.gemini_api_key:
+        logger.info("GEMINI_API_KEY not set — skipping vector search for famous designs")
+        return None, None
+
+    try:
+        embedding = await gemini_embed(query, task_type="retrieval_query")
+        collection = get_famous_designs_collection()
+
+        loop = asyncio.get_running_loop()
+        count = await loop.run_in_executor(None, collection.count)
+        if count == 0:
+            logger.info("famous_designs collection is empty — run scripts/ingest_famous_designs.py")
+            return None, None
+
+        results = await loop.run_in_executor(
+            None,
+            lambda: collection.query(
+                query_embeddings=[embedding],
+                n_results=1,
+                include=["documents", "metadatas", "distances"],
+            ),
+        )
+    except Exception as e:
+        logger.warning("Famous-design vector search failed, continuing without it: %s", e)
+        return None, None
+
+    docs = results.get("documents", [[]])[0]
+    metas = results.get("metadatas", [[]])[0]
+    distances = results.get("distances", [[]])[0]
+    if not docs:
+        return None, None
+
+    score = round(1.0 - float(distances[0]), 4)  # cosine distance -> similarity
+    if score < _FAMOUS_MATCH_THRESHOLD:
+        logger.info("Best famous-design match scored %.3f, below threshold — ignoring", score)
+        return None, None
+
+    system_name = metas[0].get("system", "")
+    chunk = RagChunk(
+        id=f"famous_{system_name}",
+        source="famous_designs",
+        section="architecture",
+        text=str(docs[0])[:1000],
+        score=score,
+    )
+    return chunk, system_name
 
 # ── Retrieval (Phase C) ──────────────────────────────────────────────────────────
 async def retrieve_context(db: AsyncSession, session_id: UUID) -> RetrievalResponse:
@@ -72,18 +114,11 @@ async def retrieve_context(db: AsyncSession, session_id: UUID) -> RetrievalRespo
     query = f"{session.prompt} {session.system_name or ''}"
     chunks: list[RagChunk] = []
     max_score = 0.0
-    famous_match = None
 
-    query_lower = query.lower()
-    for slug in _FAMOUS_SYSTEMS:
-        if slug in query_lower:
-            famous_match = slug
-            chunks.append(RagChunk(
-                id="famous_1", source="famous_designs", section="architecture",
-                text=f"Canonical architecture for {famous_match}.", score=0.95
-            ))
-            max_score = 0.95
-            break
+    famous_chunk, famous_match = await _search_famous_designs(query)
+    if famous_chunk:
+        chunks.append(famous_chunk)
+        max_score = famous_chunk.score
 
     if not chunks:
         chunks.append(RagChunk(
