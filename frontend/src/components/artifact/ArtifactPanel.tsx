@@ -1,4 +1,5 @@
 "use client"
+import { useRef, useState, useCallback } from "react"
 import {
   WorkflowIcon,
   ZapIcon,
@@ -6,14 +7,15 @@ import {
   ArrowLeftRightIcon,
   LayersIcon,
   LockIcon,
-  XIcon,
   PanelRightOpenIcon,
+  PanelRightCloseIcon,
+  XIcon,
   type LucideIcon,
 } from "lucide-react"
 import { useStore } from "@/store/useStore"
 import DiagramFlow from "./DiagramFlow"
+import ExportButton from "@/components/export/ExportButton"
 import type { ArtifactTab, ArchitectureData, CapacityData, DataModelData, ApiDesignData, StackData } from "@/types"
-
 
 // ── Tab definitions ───────────────────────────────────────────────────────────
 const TABS: { id: ArtifactTab; label: string; icon: LucideIcon }[] = [
@@ -24,7 +26,6 @@ const TABS: { id: ArtifactTab; label: string; icon: LucideIcon }[] = [
   { id: "stack",       label: "Stack",      icon: LayersIcon },
 ]
 
-// Map from ArtifactTab id to the artifact state key holding that section's data
 const TAB_DATA_KEY: Record<ArtifactTab, keyof ReturnType<typeof useStore.getState>["artifact"]> = {
   diagram:    "diagram",
   capacity:   "capacity",
@@ -33,13 +34,43 @@ const TAB_DATA_KEY: Record<ArtifactTab, keyof ReturnType<typeof useStore.getStat
   stack:      "stack",
 }
 
-export default function ArtifactPanel() {
-  const { artifact, setArtifactTab, setArtifactVisible } = useStore()
+const DEFAULT_WIDTH = 480
+const MIN_WIDTH = 320
+const MAX_WIDTH = 900
 
-  // Collapsed state — the panel was never opened yet, or the user closed it.
-  // Previously this returned `null`, which removed every button along with
-  // it, so once hidden there was no way to bring the panel back. Render a
-  // slim reopen strip instead so the user always has a way back in.
+export default function ArtifactPanel() {
+  const { artifact, setArtifactTab, setArtifactVisible, session } = useStore()
+  const [width, setWidth] = useState(DEFAULT_WIDTH)
+  const dragRef = useRef<{ startX: number; startW: number } | null>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  // Resize drag logic
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    dragRef.current = { startX: e.clientX, startW: width }
+    const onMove = (ev: MouseEvent) => {
+      if (!dragRef.current) return
+      const delta = dragRef.current.startX - ev.clientX
+      const newW = Math.max(MIN_WIDTH, Math.min(MAX_WIDTH, dragRef.current.startW + delta))
+      setWidth(newW)
+    }
+    const onUp = () => {
+      dragRef.current = null
+      window.removeEventListener("mousemove", onMove)
+      window.removeEventListener("mouseup", onUp)
+    }
+    window.addEventListener("mousemove", onMove)
+    window.addEventListener("mouseup", onUp)
+  }, [width])
+
+  const handleTabClick = (tabId: ArtifactTab) => {
+    setArtifactTab(tabId)
+    // Always scroll to top when switching tabs
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
+    }
+  }
+
   if (!artifact.isVisible) {
     return (
       <div className="h-full w-12 bg-ink-black border-l border-ink-graphite flex flex-col items-center pt-4 shrink-0">
@@ -59,86 +90,91 @@ export default function ArtifactPanel() {
   const activeError = artifact.errors?.[artifact.activeTab]
 
   return (
-    <div className="w-[480px] h-full bg-ink-black border-l border-ink-graphite flex flex-col">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-graphite shrink-0">
-        <span className="text-ink-ash text-xs font-mono uppercase tracking-wider">Design Artifacts</span>
-        <button
-          onClick={() => setArtifactVisible(false)}
-          title="Close artifact panel"
-          className="p-1 text-ink-steel hover:text-ink-white hover:bg-ink-charcoal transition-colors rounded"
-        >
-          <XIcon className="w-4 h-4" />
-        </button>
-      </div>
+    <div className="h-full flex shrink-0" style={{ width }}>
+      {/* Resize handle */}
+      <div
+        onMouseDown={onMouseDown}
+        className="w-1 h-full cursor-col-resize hover:bg-gold/40 bg-ink-graphite/50 transition-colors shrink-0"
+        title="Drag to resize"
+      />
 
-      {/* Tab bar */}
-      <div className="flex border-b border-ink-graphite shrink-0">
-        {TABS.map((tab) => {
-          const hasData = Boolean(artifact[TAB_DATA_KEY[tab.id]])
-          const isLoading = Boolean(artifact.loading?.[tab.id])
-          const isActive = artifact.activeTab === tab.id
-          const Icon = tab.icon
+      <div className="flex-1 h-full bg-ink-black border-l border-ink-graphite flex flex-col min-w-0">
+        {/* Header */}
+<div className="flex items-center justify-between px-4 py-2.5 border-b border-ink-graphite shrink-0 gap-2">
+  <span className="text-ink-ash text-xs font-mono uppercase tracking-wider">Design Artifacts</span>
+  <div className="flex items-center gap-2">
+    <ExportButton />
+    <button
+      onClick={() => setArtifactVisible(false)}
+      title="Close artifact panel"
+      className="p-1 text-ink-steel hover:text-ink-white hover:bg-ink-charcoal transition-colors rounded"
+    >
+      <XIcon className="w-4 h-4" />
+    </button>
+  </div>
+</div>
 
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setArtifactTab(tab.id)}
-              className={`
-                flex-1 py-3 px-2 text-xs font-mono uppercase tracking-wider transition-colors relative
-                flex items-center justify-center gap-1.5
-                ${isActive
-                  ? "text-gold border-b-2 border-gold bg-ink-charcoal"
-                  : "text-ink-steel hover:text-ink-ash"}
-              `}
-            >
-              {/* Loading dot indicator */}
-              {isLoading && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gold rounded-full animate-pulse" />
-              )}
-              {/* Done dot indicator */}
-              {!isLoading && hasData && !isActive && (
-                <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
-              )}
-              <Icon className="w-3.5 h-3.5" />
-              {tab.label}
-            </button>
-          )
-        })}
-      </div>
+        {/* Tab bar */}
+        <div className="flex border-b border-ink-graphite shrink-0 overflow-x-auto">
+          {TABS.map((tab) => {
+            const hasData = Boolean(artifact[TAB_DATA_KEY[tab.id]])
+            const isLoading = Boolean(artifact.loading?.[tab.id])
+            const isActive = artifact.activeTab === tab.id
+            const Icon = tab.icon
 
-      {/* Content area */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {/* Loading state */}
-        {activeLoading && !activeData && (
-          <LoadingState label={TABS.find((t) => t.id === artifact.activeTab)?.label ?? "section"} />
-        )}
+            return (
+              <button
+                key={tab.id}
+                onClick={() => handleTabClick(tab.id)}
+                className={`
+                  flex-1 py-3 px-2 text-[10px] font-mono uppercase tracking-wider transition-colors relative
+                  flex flex-col items-center justify-center gap-1 min-w-0
+                  ${isActive
+                    ? "text-gold border-b-2 border-gold bg-ink-charcoal"
+                    : "text-ink-steel hover:text-ink-ash"}
+                `}
+              >
+                {isLoading && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-gold rounded-full animate-pulse" />
+                )}
+                {!isLoading && hasData && !isActive && (
+                  <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-green-500 rounded-full" />
+                )}
+                <Icon className="w-3 h-3" />
+                <span className="leading-none">{tab.label}</span>
+              </button>
+            )
+          })}
+        </div>
 
-        {/* Error state */}
-        {activeError && !activeData && (
-          <ErrorState message={activeError} />
-        )}
+        {/* Content area */}
+        <div ref={contentRef} className="flex-1 overflow-y-auto p-5">
+          {activeLoading && !activeData && (
+            <LoadingState label={TABS.find((t) => t.id === artifact.activeTab)?.label ?? "section"} />
+          )}
+          {activeError && !activeData && (
+            <ErrorState message={activeError} />
+          )}
+          {!activeLoading && !activeError && !activeData && (
+            <WaitingState />
+          )}
 
-        {/* Section content */}
-        {!activeLoading && !activeError && !activeData && (
-          <WaitingState />
-        )}
-
-        {artifact.activeTab === "diagram" && artifact.diagram && (
-          <DiagramView data={artifact.diagram} />
-        )}
-        {artifact.activeTab === "capacity" && artifact.capacity && (
-          <CapacityView data={artifact.capacity} />
-        )}
-        {artifact.activeTab === "data_model" && artifact.data_model && (
-          <DataModelView data={artifact.data_model} />
-        )}
-        {artifact.activeTab === "api" && artifact.api && (
-          <ApiView data={artifact.api} />
-        )}
-        {artifact.activeTab === "stack" && artifact.stack && (
-          <StackView data={artifact.stack} />
-        )}
+          {artifact.activeTab === "diagram" && artifact.diagram && (
+            <DiagramView data={artifact.diagram} />
+          )}
+          {artifact.activeTab === "capacity" && artifact.capacity && (
+            <CapacityView data={artifact.capacity} />
+          )}
+          {artifact.activeTab === "data_model" && artifact.data_model && (
+            <DataModelView data={artifact.data_model} />
+          )}
+          {artifact.activeTab === "api" && artifact.api && (
+            <ApiView data={artifact.api} />
+          )}
+          {artifact.activeTab === "stack" && artifact.stack && (
+            <StackView data={artifact.stack} />
+          )}
+        </div>
       </div>
     </div>
   )
@@ -152,12 +188,8 @@ function WaitingState() {
       <div className="w-10 h-10 border border-ink-graphite mb-4 flex items-center justify-center">
         <span className="text-ink-graphite font-mono text-lg">·</span>
       </div>
-      <p className="text-ink-steel text-sm">
-        Waiting for generation…
-      </p>
-      <p className="text-ink-graphite text-xs mt-1">
-        This section will appear as the pipeline runs.
-      </p>
+      <p className="text-ink-steel text-sm">Waiting for generation…</p>
+      <p className="text-ink-graphite text-xs mt-1">This section will appear as the pipeline runs.</p>
     </div>
   )
 }
@@ -197,6 +229,11 @@ function Badge({ label, color = "text-ink-steel bg-ink-graphite" }: { label: str
   )
 }
 
+// Strip ** markdown bold markers from text
+function stripMarkdown(text: string): string {
+  return text.replace(/\*\*/g, "")
+}
+
 // ── Diagram View ──────────────────────────────────────────────────────────────
 
 function componentColor(type: string): string {
@@ -232,15 +269,20 @@ function DiagramView({ data }: { data: ArchitectureData & Record<string, any> })
       </div>
 
       {/* Interactive React Flow diagram */}
-      <DiagramFlow data={data} />
+      <div>
+        <DiagramFlow data={data} />
+        <p className="text-center text-[10px] text-ink-steel mt-1.5 tracking-wide">
+          scroll to zoom · drag to pan
+        </p>
+      </div>
 
       {/* Component cards */}
       <div className="space-y-3">
         {components.map((c: any) => (
           <div key={c.id} className="bg-ink-charcoal border border-ink-graphite p-3 space-y-2">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <div className={`w-2 h-2 rounded-full shrink-0 ${componentColor(c.type)}`} />
-              <span className="text-ink-white text-sm font-mono font-medium">{c.name}</span>
+              <span className="text-ink-white text-xs font-mono font-medium">{c.name}</span>
               <Badge label={c.type} color="text-ink-steel bg-ink-graphite" />
               {c.technology && (
                 <Badge label={c.technology} color="text-gold-text bg-ink-graphite" />
@@ -269,18 +311,24 @@ function DiagramView({ data }: { data: ArchitectureData & Record<string, any> })
         ))}
       </div>
 
-      {/* Data flows */}
+      {/* Data flows — fixed overflow */}
       {dataFlows.length > 0 && (
         <div>
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Data Flows</h3>
           <div className="space-y-1.5">
             {dataFlows.map((flow: any, i: number) => (
-              <div key={i} className="flex items-center gap-2 text-xs bg-ink-charcoal border border-ink-graphite px-3 py-2">
-                <span className="text-cyan-400 font-mono">{flow.from}</span>
-                <span className="text-ink-steel">→</span>
-                <span className="text-cyan-400 font-mono">{flow.to}</span>
-                {flow.label && <span className="text-ink-steel ml-auto">{flow.label}</span>}
-                {flow.protocol && <Badge label={flow.protocol} color="text-gold-text bg-ink-graphite" />}
+              <div key={i} className="bg-ink-charcoal border border-ink-graphite px-3 py-2">
+                <div className="flex items-center gap-1.5 flex-wrap text-xs">
+                  <span className="text-cyan-400 font-mono text-[11px] break-all">{flow.from}</span>
+                  <span className="text-ink-steel shrink-0">→</span>
+                  <span className="text-cyan-400 font-mono text-[11px] break-all">{flow.to}</span>
+                </div>
+                {(flow.label || flow.protocol) && (
+                  <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    {flow.label && <span className="text-ink-steel text-[10px]">{flow.label}</span>}
+                    {flow.protocol && <Badge label={flow.protocol} color="text-gold-text bg-ink-graphite" />}
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -306,7 +354,7 @@ function DiagramView({ data }: { data: ArchitectureData & Record<string, any> })
         </div>
       )}
 
-      {/* Key design decisions */}
+      {/* Key design decisions — no ** */}
       {decisions.length > 0 && (
         <div>
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Key Decisions</h3>
@@ -314,7 +362,7 @@ function DiagramView({ data }: { data: ArchitectureData & Record<string, any> })
             {decisions.map((d: string, i: number) => (
               <li key={i} className="text-ink-ash text-xs flex gap-2">
                 <span className="text-gold shrink-0">{i + 1}.</span>
-                <span>{d}</span>
+                <span>{stripMarkdown(d)}</span>
               </li>
             ))}
           </ul>
@@ -343,15 +391,10 @@ function CapacityView({ data }: { data: CapacityData & Record<string, any> }) {
   return (
     <div className="space-y-6">
       <h2 className="text-gold font-mono text-sm uppercase tracking-wider">Capacity Estimation</h2>
-
-      {/* Metrics grid */}
       <div className="space-y-2">
-        {metrics.map((m) => (
+        {metrics.map((m) =>
           m.value != null && (
-            <div
-              key={m.label}
-              className="flex justify-between items-baseline bg-ink-charcoal border border-ink-graphite px-3 py-2.5"
-            >
+            <div key={m.label} className="flex justify-between items-baseline bg-ink-charcoal border border-ink-graphite px-3 py-2.5">
               <span className="text-ink-steel text-xs">{m.label}</span>
               <span className="text-ink-white font-mono text-sm">
                 {m.value}{" "}
@@ -359,10 +402,8 @@ function CapacityView({ data }: { data: CapacityData & Record<string, any> }) {
               </span>
             </div>
           )
-        ))}
+        )}
       </div>
-
-      {/* Formulas */}
       {data.formulas && Object.keys(data.formulas).length > 0 && (
         <div>
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Derivation Formulas</h3>
@@ -376,28 +417,24 @@ function CapacityView({ data }: { data: CapacityData & Record<string, any> }) {
           </div>
         </div>
       )}
-
-      {/* Scaling notes */}
       {data.scaling_notes && (
         <div className="bg-ink-charcoal border border-ink-graphite p-3">
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-1">Scaling Notes</h3>
           <p className="text-ink-ash text-xs leading-relaxed">{data.scaling_notes}</p>
         </div>
       )}
-
-      {/* Assumptions */}
       {data.assumptions && data.assumptions.length > 0 && (
-  <div>
-    <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Assumptions</h3>
-    <ul className="space-y-1">
-      {data.assumptions.map((a: string, i: number) => (
-        <li key={i} className="text-ink-ash text-xs flex gap-2">
-          <span className="text-gold shrink-0">·</span> {a}
-        </li>
-      ))}
-    </ul>
-  </div>
-)}
+        <div>
+          <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Assumptions</h3>
+          <ul className="space-y-1">
+            {data.assumptions.map((a: string, i: number) => (
+              <li key={i} className="text-ink-ash text-xs flex gap-2">
+                <span className="text-gold shrink-0">·</span> {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   )
 }
@@ -411,9 +448,7 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
   return (
     <div className="space-y-6">
       <h2 className="text-gold font-mono text-sm uppercase tracking-wider">Data Model</h2>
-
-      {/* Decision banner */}
-      <div className="bg-ink-charcoal border border-ink-graphite p-3 flex items-center gap-3">
+      <div className="bg-ink-charcoal border border-ink-graphite p-3 flex items-center gap-3 flex-wrap">
         <span className="text-ink-steel text-xs">Decision:</span>
         <span className="text-gold font-mono text-sm font-medium">{data.decision}</span>
         {data.primary_store && (
@@ -423,13 +458,9 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
           </>
         )}
       </div>
-
-      {/* Rationale */}
       {data.rationale && (
         <p className="text-ink-ash text-xs leading-relaxed">{data.rationale}</p>
       )}
-
-      {/* Secondary stores */}
       {secondaryStores.length > 0 && (
         <div>
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Secondary Stores</h3>
@@ -440,8 +471,6 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
           </div>
         </div>
       )}
-
-      {/* Entity cards */}
       <div className="space-y-4">
         {entities.map((entity: any) => (
           <div key={entity.name} className="bg-ink-charcoal border border-ink-graphite p-3 space-y-2">
@@ -449,8 +478,6 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
               <h3 className="text-cyan-400 font-mono text-sm">{entity.name}</h3>
               {entity.store && <Badge label={entity.store} color="text-gold-text bg-ink-graphite" />}
             </div>
-
-            {/* Columns table */}
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
@@ -475,11 +502,9 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
                 </tbody>
               </table>
             </div>
-
             {entity.sharding_key && (
               <p className="text-ink-steel text-xs">
-                Sharding key:{" "}
-                <span className="text-gold-text font-mono">{entity.sharding_key}</span>
+                Sharding key: <span className="text-gold-text font-mono">{entity.sharding_key}</span>
               </p>
             )}
             {entity.partition_strategy && (
@@ -495,16 +520,12 @@ function DataModelView({ data }: { data: DataModelData & Record<string, any> }) 
           </div>
         ))}
       </div>
-
-      {/* Caching strategy */}
       {data.caching_strategy && (
         <div className="bg-ink-charcoal border border-ink-graphite p-3">
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-1">Caching Strategy</h3>
           <p className="text-ink-ash text-xs leading-relaxed">{data.caching_strategy}</p>
         </div>
       )}
-
-      {/* Notes */}
       {data.notes && (
         <p className="text-ink-steel text-xs italic">{data.notes}</p>
       )}
@@ -522,14 +543,11 @@ function ApiView({ data }: { data: ApiDesignData & Record<string, any> }) {
     DELETE: "text-red-400",
     PATCH:  "text-orange-400",
   }
-
   const endpoints = data.endpoints ?? []
 
   return (
     <div className="space-y-6">
       <h2 className="text-gold font-mono text-sm uppercase tracking-wider">API Design</h2>
-
-      {/* Meta row */}
       <div className="flex flex-wrap gap-2">
         {data.style && (
           <div className="bg-ink-charcoal border border-ink-graphite px-3 py-2">
@@ -549,25 +567,13 @@ function ApiView({ data }: { data: ApiDesignData & Record<string, any> }) {
             <span className="text-ink-white font-mono text-sm ml-2">{data.versioning}</span>
           </div>
         )}
-        {(data.base_url || data.version) && (
-          <div className="bg-ink-charcoal border border-ink-graphite px-3 py-2">
-            <span className="text-ink-steel text-xs">Base URL:</span>
-            <span className="text-ink-white font-mono text-sm ml-2">
-              {data.base_url ?? ""}{data.version ? `/${data.version}` : ""}
-            </span>
-          </div>
-        )}
       </div>
-
-      {/* Rate limiting */}
       {data.rate_limiting && (
         <div className="bg-ink-charcoal border border-ink-graphite p-3">
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-1">Rate Limiting</h3>
           <p className="text-ink-ash text-xs">{data.rate_limiting}</p>
         </div>
       )}
-
-      {/* Endpoints */}
       <div className="space-y-3">
         {endpoints.map((ep: any, i: number) => (
           <div key={i} className="bg-ink-charcoal border border-ink-graphite p-3 space-y-2">
@@ -575,26 +581,17 @@ function ApiView({ data }: { data: ApiDesignData & Record<string, any> }) {
               <span className={`font-mono text-xs font-bold ${methodColors[ep.method] ?? "text-ink-white"}`}>
                 {ep.method}
               </span>
-              <span className="text-ink-white font-mono text-sm">{ep.path}</span>
+              <span className="text-ink-white font-mono text-xs break-all">{ep.path}</span>
               {ep.auth_required != null && (
-                <span
-                  className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 ${
-                    ep.auth_required ? "text-orange-400 bg-ink-graphite" : "text-green-400 bg-ink-graphite"
-                  }`}
-                >
+                <span className={`inline-flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 ${ep.auth_required ? "text-orange-400 bg-ink-graphite" : "text-green-400 bg-ink-graphite"}`}>
                   {ep.auth_required && <LockIcon className="w-2.5 h-2.5" />}
                   {ep.auth_required ? "auth" : "public"}
                 </span>
               )}
             </div>
             <p className="text-ink-ash text-xs leading-relaxed">{ep.description}</p>
-            {ep.rate_limit && (
-              <p className="text-ink-steel text-xs">Rate: {ep.rate_limit}</p>
-            )}
-            {ep.notes && (
-              <p className="text-ink-steel text-xs italic">{ep.notes}</p>
-            )}
-            {/* Query params */}
+            {ep.rate_limit && <p className="text-ink-steel text-xs">Rate: {ep.rate_limit}</p>}
+            {ep.notes && <p className="text-ink-steel text-xs italic">{ep.notes}</p>}
             {ep.query_params && Object.keys(ep.query_params).length > 0 && (
               <div className="pt-1 border-t border-ink-graphite">
                 <span className="text-ink-steel text-[10px] font-mono uppercase">Query params</span>
@@ -611,8 +608,6 @@ function ApiView({ data }: { data: ApiDesignData & Record<string, any> }) {
           </div>
         ))}
       </div>
-
-      {/* Error handling */}
       {data.error_handling && (
         <div className="bg-ink-charcoal border border-ink-graphite p-3">
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-1">Error Handling</h3>
@@ -632,15 +627,11 @@ function StackView({ data }: { data: StackData & Record<string, any> }) {
   return (
     <div className="space-y-6">
       <h2 className="text-gold font-mono text-sm uppercase tracking-wider">Tech Stack</h2>
-
-      {/* Philosophy */}
       {data.philosophy && (
         <p className="text-ink-ash text-xs italic leading-relaxed border-l-2 border-gold pl-3">
           {data.philosophy}
         </p>
       )}
-
-      {/* Layer cards */}
       <div className="space-y-3">
         {layers.map((layer: any, i: number) => (
           <div key={i} className="bg-ink-charcoal border border-ink-graphite p-3 space-y-2">
@@ -665,8 +656,6 @@ function StackView({ data }: { data: StackData & Record<string, any> }) {
           </div>
         ))}
       </div>
-
-      {/* Infrastructure */}
       {infra && (
         <div>
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-2">Infrastructure</h3>
@@ -700,8 +689,6 @@ function StackView({ data }: { data: StackData & Record<string, any> }) {
           </div>
         </div>
       )}
-
-      {/* Cost estimate */}
       {data.cost_estimate && (
         <div className="bg-ink-charcoal border border-ink-graphite p-3">
           <h3 className="text-ink-ash text-xs font-mono uppercase tracking-wider mb-1">Cost Estimate</h3>

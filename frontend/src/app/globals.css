@@ -1,20 +1,14 @@
+/* frontend/src/app/globals.css */
 @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* ── Lamborghini design system tokens ────────────────────────────── */
-
-  /* Colors */
   --color-gold: #FFC000;
   --color-gold-dark: #917300;
   --color-gold-text: #FFCE3E;
-
   --color-cyan-pulse: #29ABE2;
-
   --color-link-blue: #3860BE;
-
   --color-teal-action: #1EAEDB;
-
   --color-surface-black: #000000;
   --color-surface-charcoal: #202020;
   --color-surface-iron: #181818;
@@ -23,7 +17,7 @@
   --color-surface-mist: rgba(0, 0, 0, 0.25);
   --color-surface-near_white: #F8F8F8;
   --color-surface-light_mist: #E6E6E6;
-
+  --color-ink-black: #000000;
   --color-ink-white: #FFFFFF;
   --color-ink-smoke: #F5F5F5;
   --color-ink-graphite: #494949;
@@ -32,66 +26,45 @@
   --color-ink-slate: #666666;
   --color-ink-iron: #555555;
   --color-ink-shadow: #313131;
-
-  /* Fonts — LamboType is proprietary; Oswald is the closest open
-     condensed Neo-Grotesk substitute (uppercase-forward, angular). */
+  --color-ink-charcoal: #202020;
   --font-lambo: "Oswald", "Helvetica Neue", Arial, sans-serif;
-
-  /* Type scale */
-  --text-hero: 7.5rem;       /* 120px */
+  --text-hero: 7.5rem;
   --text-hero--line-height: 0.92;
-
-  --text-display: 5rem;      /* 80px */
+  --text-display: 5rem;
   --text-display--line-height: 1.13;
-
-  --text-section: 3.375rem;  /* 54px */
+  --text-section: 3.375rem;
   --text-section--line-height: 1.19;
-
-  --text-sub: 2.5rem;        /* 40px */
+  --text-sub: 2.5rem;
   --text-sub--line-height: 1.15;
-
-  --text-feature: 1.6875rem; /* 27px */
+  --text-feature: 1.6875rem;
   --text-feature--line-height: 1.37;
-
-  --text-cardtitle: 1.5rem;  /* 24px */
+  --text-cardtitle: 1.5rem;
   --text-cardtitle--line-height: 1.3;
-
-  --text-bodylg: 1.125rem;   /* 18px */
+  --text-bodylg: 1.125rem;
   --text-bodylg--line-height: 1.56;
-
-  --text-body: 1rem;         /* 16px */
+  --text-body: 1rem;
   --text-body--line-height: 1.50;
-
-  --text-btnlg: 1rem;        /* 16px */
+  --text-btnlg: 1rem;
   --text-btnlg--line-height: 1.50;
-
-  --text-btn: 0.9rem;        /* 14.4px */
+  --text-btn: 0.9rem;
   --text-btn--line-height: 1.00;
   --text-btn--letter-spacing: 0.16px;
-
-  --text-btnsm: 0.8125rem;   /* 13px */
+  --text-btnsm: 0.8125rem;
   --text-btnsm--line-height: 1.20;
   --text-btnsm--letter-spacing: 0.16px;
-
-  --text-caption: 0.875rem;  /* 14px */
+  --text-caption: 0.875rem;
   --text-caption--line-height: 1.3;
   --text-caption--letter-spacing: -0.42px;
-
-  --text-label: 0.75rem;     /* 12px */
+  --text-label: 0.75rem;
   --text-label--line-height: 1.83;
   --text-label--letter-spacing: 0.96px;
-
-  --text-micro: 0.625rem;    /* 10px */
+  --text-micro: 0.625rem;
   --text-micro--line-height: 1.5;
   --text-micro--letter-spacing: 0.225px;
-
-  /* Border radius — sharp, angular — non-negotiable */
-  --radius: 0px;             /* DEFAULT → "rounded" */
+  --radius: 0px;
   --radius-none: 0px;
-  --radius-sm: 2px;          /* badges only */
-  --radius-switch: 20px;     /* toggle switches only */
-
-  /* Spacing overrides — base-8 scale from the design system */
+  --radius-sm: 2px;
+  --radius-switch: 20px;
   --spacing-0\.5: 2px;
   --spacing-1: 4px;
   --spacing-1\.5: 5px;
@@ -106,11 +79,49 @@
   --spacing-10: 40px;
   --spacing-12: 48px;
   --spacing-14: 56px;
-
-  /* Layout */
   --width-sidebar: 280px;
   --width-artifact: 440px;
   --max-width-container: 1440px;
+}
+
+/* ── CSS custom properties — overridden per theme ─────────────────── */
+:root,
+[data-theme="dark"] {
+  --bg-base: #000000;
+  --bg-surface: #000000;
+  --bg-panel: #0a0a0a;
+  --bg-card: #202020;
+  --bg-input: #202020;
+  --bg-hover: #2a2a2a;
+  --border-subtle: #202020;
+  --border-default: #494949;
+  --border-strong: #969696;
+  --text-primary: #FFFFFF;
+  --text-secondary: #7D7D7D;
+  --text-muted: #494949;
+  --text-placeholder: #969696;
+  --diagram-bg: #0a0a0a;
+  --diagram-border: #FFC000;
+  --diagram-shadow: 0 0 0 1px rgba(255,192,0,0.25), 0 0 20px rgba(255,192,0,0.08), inset 0 0 30px rgba(0,0,0,0.5);
+}
+
+[data-theme="light"] {
+  --bg-base: #F0F0F0;
+  --bg-surface: #F5F5F5;
+  --bg-panel: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --bg-input: #FFFFFF;
+  --bg-hover: #EBEBEB;
+  --border-subtle: #D0D0D0;
+  --border-default: #B0B0B0;
+  --border-strong: #707070;
+  --text-primary: #111111;
+  --text-secondary: #444444;
+  --text-muted: #888888;
+  --text-placeholder: #999999;
+  --diagram-bg: #FFFFFF;
+  --diagram-border: #FFC000;
+  --diagram-shadow: 0 0 0 1px rgba(255,192,0,0.5), 0 4px 20px rgba(0,0,0,0.12);
 }
 
 @layer base {
@@ -123,128 +134,148 @@
   html, body {
     height: 100%;
     overflow: hidden;
-    background-color: #000000;
+    background-color: var(--bg-base);
+    color: var(--text-primary);
   }
 
   body {
     font-family: 'Oswald', 'Helvetica Neue', Arial, sans-serif;
   }
 
-  ::-webkit-scrollbar {
-    width: 4px;
+  /* ── Light mode overrides for tailwind color utilities ──────────── */
+  [data-theme="light"] .bg-surface-black { background-color: var(--bg-base) !important; }
+  [data-theme="light"] .bg-ink-black { background-color: var(--bg-surface) !important; }
+  [data-theme="light"] .bg-surface-charcoal { background-color: #E8E8E8 !important; }
+  [data-theme="light"] .bg-ink-charcoal { background-color: #FFFFFF !important; }
+  [data-theme="light"] .bg-ink-graphite { background-color: #E0E0E0 !important; }
+
+  [data-theme="light"] .text-ink-white { color: #111111 !important; }
+  [data-theme="light"] .text-ink-smoke { color: #222222 !important; }
+  [data-theme="light"] .text-ink-ash { color: #444444 !important; }
+  [data-theme="light"] .text-ink-steel { color: #555555 !important; }
+  [data-theme="light"] .text-ink-graphite { color: #777777 !important; }
+
+  [data-theme="light"] .border-ink-graphite { border-color: #C8C8C8 !important; }
+  [data-theme="light"] .border-white\/15 { border-color: rgba(0,0,0,0.15) !important; }
+  [data-theme="light"] .border-\[\#202020\] { border-color: #D0D0D0 !important; }
+
+  [data-theme="light"] .input-dark {
+    background-color: #FFFFFF !important;
+    border-color: rgba(0,0,0,0.2) !important;
+    color: #111111 !important;
   }
-  ::-webkit-scrollbar-track {
-    background: transparent;
-  }
-  ::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
+  [data-theme="light"] .input-dark::placeholder { color: #999999 !important; }
+
+  [data-theme="light"] .msg-user {
+    background-color: #E8E8E8 !important;
+    border-color: rgba(0,0,0,0.15) !important;
+    color: #111111 !important;
   }
 
-  /* Lamborghini Gold selection — the only chromatic accent */
-  ::selection {
-    background: rgba(255, 192, 0, 0.35);
-  }
+  [data-theme="light"] .react-flow__background { background-color: #FAFAFA !important; }
+  [data-theme="light"] .react-flow__node { filter: none !important; }
+
+  ::-webkit-scrollbar { width: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
+
+  ::selection { background: rgba(255, 192, 0, 0.35); }
 }
 
 @layer components {
 
-  /* ── Buttons — zero border-radius across the board ─────────────────── */
-
-  /* Gold Accent CTA — primary action ("Discover More", "Generate Design") */
   .btn-accent {
     @apply inline-flex items-center justify-center gap-2 bg-gold text-surface-black
            text-btnlg font-normal uppercase tracking-wide px-6 py-3 rounded-none
            transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .btn-accent:hover:not(:disabled) {
-    @apply bg-gold-dark;
-  }
+  .btn-accent:hover:not(:disabled) { @apply bg-gold-dark; }
 
-  /* Icon-only Gold Accent — same brand fill as .btn-accent but square,
-     compact padding (send button, etc.) instead of the CTA's px-6/py-3. */
   .btn-accent-icon {
     @apply inline-flex items-center justify-center bg-gold text-surface-black
            rounded-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .btn-accent-icon:hover:not(:disabled) {
-    @apply bg-gold-dark;
-  }
+  .btn-accent-icon:hover:not(:disabled) { @apply bg-gold-dark; }
 
-  /* Transparent Ghost — secondary CTA on dark backgrounds */
   .btn-ghost {
     @apply inline-flex items-center justify-center gap-2 bg-transparent text-ink-white
            border border-white/50 text-btn font-light uppercase tracking-wide px-4 py-4
            rounded-none transition-colors duration-150 disabled:opacity-40 disabled:cursor-not-allowed;
   }
-  .btn-ghost:hover:not(:disabled) {
-    @apply bg-teal-action/70 border-teal-action text-ink-white;
+  [data-theme="light"] .btn-ghost {
+    @apply text-ink-graphite border-black/30;
   }
-  .btn-ghost.selected {
-    @apply border-gold text-gold opacity-100;
-  }
+  .btn-ghost:hover:not(:disabled) { @apply bg-teal-action/70 border-teal-action text-ink-white; }
+  .btn-ghost.selected { @apply border-gold text-gold opacity-100; }
 
-  /* Gray Neutral — tertiary action / badge-like button */
   .btn-gray {
     @apply inline-flex items-center justify-center gap-2 bg-ink-steel text-surface-charcoal
-           text-btnsm uppercase tracking-wide px-4 py-2.5 rounded-none
-           transition-colors duration-150;
+           text-btnsm uppercase tracking-wide px-4 py-2.5 rounded-none transition-colors duration-150;
   }
 
-  /* ── Cards & Surfaces ────────────────────────────────────────────────── */
-
-  .card {
-    @apply bg-surface-charcoal rounded-none;
-  }
-
-  .panel-divider {
-    border-color: #202020;
-  }
-
-  /* ── Badges / Tags ───────────────────────────────────────────────────── */
+  .card { @apply bg-surface-charcoal rounded-none; }
+  .panel-divider { border-color: #202020; }
 
   .badge {
     @apply inline-flex items-center bg-ink-steel text-ink-white text-micro
            uppercase tracking-wide px-2 py-1 rounded-sm;
   }
 
-  /* ── Labels ──────────────────────────────────────────────────────────── */
-
-  .label-caps {
-    @apply text-label uppercase tracking-wide text-ink-ash;
-  }
-
-  /* ── Inputs ──────────────────────────────────────────────────────────── */
+  .label-caps { @apply text-label uppercase tracking-wide text-ink-ash; }
 
   .input-dark {
     @apply bg-surface-charcoal border border-white/15 text-ink-white placeholder:text-ink-steel
            rounded-none px-4 py-3 text-body focus:outline-none focus:border-gold transition-colors duration-150;
   }
 
-  /* ── Message bubbles ─────────────────────────────────────────────────── */
-
   .msg-user {
     @apply bg-surface-charcoal border border-white/15 text-ink-white rounded-none;
   }
-  .msg-assistant {
-    @apply bg-transparent text-ink-white;
-  }
-
-  /* ── Hexagon shape — brand geometric DNA ────────────────────────────── */
+  .msg-assistant { @apply bg-transparent text-ink-white; }
+  [data-theme="light"] .msg-assistant { color: #111111; }
 
   .hexagon {
     clip-path: polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%);
   }
 
-  /* ── Artifact tabs ───────────────────────────────────────────────────── */
-
   .artifact-tab {
     @apply px-4 py-2.5 text-btnsm font-light uppercase tracking-wide text-ink-ash
            rounded-none cursor-pointer transition-colors duration-150 border-b-2 border-transparent;
   }
-  .artifact-tab:hover {
-    @apply text-ink-white;
+  .artifact-tab:hover { @apply text-ink-white; }
+  .artifact-tab.active { @apply text-ink-white border-gold; }
+
+  /* ── Diagram canvas — gold border + glow in dark, clean in light ── */
+  .diagram-canvas {
+    border: 1px solid var(--diagram-border);
+    box-shadow: var(--diagram-shadow);
+    background-color: var(--diagram-bg);
+    position: relative;
   }
-  .artifact-tab.active {
-    @apply text-ink-white border-gold;
+
+  [data-theme="light"] .diagram-controls button {
+    background: #FFFFFF !important;
+    border-color: #C8C8C8 !important;
+    color: #333333 !important;
+  }
+  [data-theme="light"] .diagram-controls button:hover {
+    background: #F0F0F0 !important;
+  }
+
+  [data-theme="light"] .arch-node-card {
+    background-color: #FFFFFF !important;
+    border-color: rgba(0,0,0,0.15) !important;
+  }
+  [data-theme="light"] .arch-node-card .node-name {
+    color: #111111 !important;
+  }
+
+  .theme-toggle {
+    @apply p-2 rounded-none transition-colors duration-150;
+    color: var(--text-secondary);
+  }
+  .theme-toggle:hover {
+    color: var(--text-primary);
+    background: var(--bg-hover);
   }
 }
