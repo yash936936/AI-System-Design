@@ -140,6 +140,10 @@ export default function ExportButton({ className = "" }: { className?: string })
         const md = buildMarkdown(artifact, prompt)
         triggerDownload(new Blob([md], { type: "text/markdown" }), `${filename}.md`)
       } else if (fmt === "pdf") {
+        // The print stylesheet (#artifact-export-print rules in globals.css)
+        // hides everything else on the page and prints only the
+        // ArtifactExportDocument — a combined view of all five tabs —
+        // instead of the entire app screen.
         window.print()
       }
     } finally {

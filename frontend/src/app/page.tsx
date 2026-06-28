@@ -1,6 +1,7 @@
 import Sidebar from "@/components/layout/Sidebar"
 import ChatPanel from "@/components/chat/ChatPanel"
 import ArtifactPanel from "@/components/artifact/ArtifactPanel"
+import ArtifactExportDocument from "@/components/export/ArtifactExportDocument"
 
 export default function HomePage() {
   return (
@@ -8,6 +9,10 @@ export default function HomePage() {
       <Sidebar />
       <ChatPanel />
       <ArtifactPanel />
+      {/* Hidden off-screen, only rendered when printing/exporting to PDF.
+          Combines all five artifact tabs into one printable document so
+          "PDF (print)" exports just the artifacts, not the whole app. */}
+      <ArtifactExportDocument />
     </div>
   )
 }

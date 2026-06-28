@@ -159,6 +159,57 @@
   [data-theme="light"] .border-white\/15 { border-color: rgba(0,0,0,0.15) !important; }
   [data-theme="light"] .border-\[\#202020\] { border-color: #D0D0D0 !important; }
 
+  /* ── Light mode: hover-state fix ──────────────────────────────────────
+     Tailwind compiles `hover:bg-surface-charcoal` etc. to a *single*
+     class token "hover:bg-surface-charcoal" (colon and all). The plain
+     overrides above only match the un-prefixed class name, so they never
+     apply to hover variants — meaning sidebar / menu rows fell back to
+     the dark theme's native near-black hover background (with dark
+     gray secondary text on top of it) whenever the mouse moved over
+     them in light theme, e.g. the "Recent" chat list. Re-map the hover
+     variants explicitly so hovered rows stay light and readable. */
+  [data-theme="light"] .hover\:bg-surface-charcoal:hover { background-color: #EBEBEB !important; }
+  [data-theme="light"] .hover\:bg-surface-iron:hover     { background-color: #E2E2E2 !important; }
+  [data-theme="light"] .hover\:bg-ink-charcoal:hover      { background-color: #EBEBEB !important; }
+  [data-theme="light"] .hover\:bg-ink-graphite:hover      { background-color: #DADADA !important; }
+  [data-theme="light"] .hover\:text-ink-white:hover       { color: #111111 !important; }
+  [data-theme="light"] .hover\:text-ink-ash:hover         { color: #222222 !important; }
+  [data-theme="light"] .hover\:text-gold:hover            { color: #8A6700 !important; }
+
+  /* ── Light mode contrast fixes ──────────────────────────────────────
+     Several badges / labels / icons use bright pastel Tailwind colors
+     (cyan-400, blue-400, yellow-400, gold-text, etc.) that read fine on
+     the near-black dark theme but become nearly invisible on the light
+     theme's white/light-gray card and badge backgrounds. Re-map them to
+     darker, more saturated shades whenever the light theme is active. */
+  [data-theme="light"] .text-gold        { color: #8A6700 !important; }
+  [data-theme="light"] .text-gold-text   { color: #8A6700 !important; }
+  [data-theme="light"] .text-cyan-400    { color: #0E7490 !important; }
+  [data-theme="light"] .text-blue-400    { color: #1D4ED8 !important; }
+  [data-theme="light"] .text-teal-400    { color: #0F766E !important; }
+  [data-theme="light"] .text-yellow-400  { color: #A16207 !important; }
+  [data-theme="light"] .text-pink-400    { color: #BE185D !important; }
+  [data-theme="light"] .text-purple-400  { color: #7E22CE !important; }
+  [data-theme="light"] .text-green-400   { color: #15803D !important; }
+  [data-theme="light"] .text-red-400     { color: #B91C1C !important; }
+  [data-theme="light"] .text-red-300     { color: #B91C1C !important; }
+  [data-theme="light"] .text-orange-400  { color: #C2410C !important; }
+  [data-theme="light"] .text-indigo-400  { color: #4338CA !important; }
+  [data-theme="light"] .text-gray-400    { color: #4B5563 !important; }
+
+  /* Small color-coded dots/swatches (e.g. component-type bullets) keep
+     their bright fill, but get a faint outline so pale colors (yellow,
+     cyan) stay visible against white/light-gray cards. */
+  [data-theme="light"] .rounded-full.bg-yellow-400,
+  [data-theme="light"] .rounded-full.bg-cyan-400,
+  [data-theme="light"] .rounded-full.bg-blue-400,
+  [data-theme="light"] .rounded-full.bg-pink-400,
+  [data-theme="light"] .rounded-full.bg-purple-400,
+  [data-theme="light"] .rounded-full.bg-green-400,
+  [data-theme="light"] .rounded-full.bg-gray-400 {
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.3);
+  }
+
   [data-theme="light"] .input-dark {
     background-color: #FFFFFF !important;
     border-color: rgba(0,0,0,0.2) !important;
@@ -180,6 +231,19 @@
   ::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); }
 
   ::selection { background: rgba(255, 192, 0, 0.35); }
+
+  /* ── Print / PDF export ───────────────────────────────────────────
+     #artifact-export-print is portaled directly onto <body> by
+     ArtifactExportDocument. When printing (or "Save as PDF"), every
+     other direct child of <body> is hidden so only the export
+     document — which contains *all five* artifact tabs — is printed,
+     instead of the whole app screen. */
+  #artifact-export-print { display: none; }
+  @media print {
+    body > *:not(#artifact-export-print) { display: none !important; }
+    #artifact-export-print { display: block !important; }
+    html, body { overflow: visible !important; height: auto !important; }
+  }
 }
 
 @layer components {
