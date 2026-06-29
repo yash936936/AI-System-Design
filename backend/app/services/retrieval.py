@@ -10,6 +10,7 @@ from app.schemas.schemas import RetrievalResponse, RagChunk
 from app.db.models import RagRetrieval, FamousDesign
 from app.services.session import get_session
 from app.services.vector_store import get_famous_designs_collection
+from app.services.retrieval_service import retrieve_for_session
 
 logger = logging.getLogger(__name__)
 settings = get_settings()
@@ -106,39 +107,39 @@ async def _search_famous_designs(query: str) -> tuple[RagChunk | None, str | Non
     return chunk, system_name
 
 # ── Retrieval (Phase C) ──────────────────────────────────────────────────────────
+#
+# BUG FIX (this was the actual broken wiring in the repo): this module used to
+# contain its own, separate retrieve_context() implementation — one that:
+#   1. Never checked for an existing RagRetrieval row first, so every GET to
+#      /api/sessions/{id}/retrieve inserted a brand-new row. There was no
+#      caching/idempotency on this path at all, despite app/services/
+#      retrieval_service.py implementing exactly that (idempotency check,
+#      SerpAPI web fallback, parallel search of BOTH Chroma collections).
+#   2. Never called the SerpAPI web-search fallback — the code for it exists
+#      in retrieval_service.py but was never invoked from anywhere, so it was
+#      fully dead.
+#   3. Only ever searched the `famous_designs` collection, never the main
+#      `system_design_docs` collection.
+#   4. Fell back to a hardcoded fake chunk ("General system design
+#      principles.") whenever nothing was found, instead of real fallback
+#      content.
+#
+# Fix: delegate to retrieve_for_session(), which already implements all of
+# the above correctly. This file keeps list_famous_systems/get_famous_system
+# (still used by app/api/routes/famous.py) plus _search_famous_designs as a
+# small helper retained for any direct callers, but the route-facing entry
+# point now actually uses the real pipeline.
 async def retrieve_context(db: AsyncSession, session_id: UUID) -> RetrievalResponse:
     session = await get_session(db, session_id)
     if not session:
         raise ValueError("Session not found")
 
-    query = f"{session.prompt} {session.system_name or ''}"
-    chunks: list[RagChunk] = []
-    max_score = 0.0
+    response = await retrieve_for_session(db, session_id)
 
-    famous_chunk, famous_match = await _search_famous_designs(query)
-    if famous_chunk:
-        chunks.append(famous_chunk)
-        max_score = famous_chunk.score
+    # Status tracking only (not load-bearing for downstream logic, but kept
+    # consistent with the rest of the session lifecycle).
+    if session.status not in ("generating", "complete"):
+        session.status = "retrieving"
+        await db.commit()
 
-    if not chunks:
-        chunks.append(RagChunk(
-            id="mock_1", source="knowledge_base", section="general",
-            text="General system design principles.", score=0.75
-        ))
-        max_score = 0.75
-
-    db_retrieval = RagRetrieval(
-        session_id=session_id, query=query,
-        chunks_json=[c.model_dump() for c in chunks],
-        max_score=max_score, used_web_fallback=False, famous_match=famous_match
-    )
-    db.add(db_retrieval)
-    await db.flush()
-
-    session.status = "retrieving"
-    await db.commit()
-
-    return RetrievalResponse(
-        session_id=session_id, query=query, chunks=chunks,
-        max_score=max_score, used_web_fallback=False, famous_design_matched=famous_match
-    )
+    return response

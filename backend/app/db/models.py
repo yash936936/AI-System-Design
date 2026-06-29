@@ -40,6 +40,18 @@ class Session(Base):
 
 class RagRetrieval(Base):
     __tablename__ = "rag_retrievals"
+    # FIX: retrieve_for_session() (app/services/retrieval_service.py) catches
+    # IntegrityError to handle two concurrent requests racing to create the
+    # first retrieval for the same session. The DB already enforces this via
+    # the `uq_retrieval_session` unique constraint added in alembic migration
+    # 26c51db01cbf_add_missing_columns_to_sessions.py — but the ORM model
+    # itself never declared it, so SQLAlchemy didn't know about it and a
+    # fresh `Base.metadata.create_all()` (e.g. via init_db(), which is what
+    # actually runs the schema today — see app/db/session.py) silently
+    # skipped creating the constraint, leaving the idempotency guard with
+    # nothing to catch. Declaring it here keeps the model in sync with the
+    # migration and makes create_all() create it too.
+    __table_args__ = (UniqueConstraint('session_id', name='uq_retrieval_session'),)
 
     id = Column(Uuid(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(Uuid(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"))
