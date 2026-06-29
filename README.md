@@ -9,7 +9,7 @@ An AI-powered system design tool built to generate professional-grade, structure
 * **Intelligent Intent Detection:** Automatically classifies user prompts as HLD or LLD before proceeding.
 * **Structured Clarification (MCQ):** Gathers non-functional requirements, functional requirements, and constraints before generating architecture.
 * **RAG-Powered Generation:** Ingests system design GitHub repos and canonical architectures (e.g., Netflix, X/Twitter, Uber) to ground AI responses in real-world engineering practices.
-* **Claude-Style Interactive UI:** A three-panel layout featuring chat history, a main chat area, and an artifact panel for progressive rendering.
+* **Interactive UI:** A three-panel layout featuring chat history, a main chat area, and an artifact panel for progressive rendering.
 * **Comprehensive Artifact Output:** Generates interactive architecture diagrams (React Flow/Mermaid), capacity estimates, data models, API schemas, and tech stack recommendations.
 * **Export & Sharing:** Download completed design packages as PDF or Markdown, or share them via public links.
 
