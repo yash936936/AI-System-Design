@@ -22,12 +22,12 @@ SysDesign AI operates as a monorepo utilizing a modern Python/Node stack.
 ### Frontend
 * **Framework:** Next.js 14 (App Router)
 * **State Management:** Zustand (Session, MCQ, and Artifact tab state)
-* **UI & Styling:** Tailwind CSS (Claude.ai-identical color palette), custom interactive chips.
+* **UI & Styling:** Tailwind CSS 
 * **Diagram Rendering:** React Flow (interactive components) + Mermaid (fallback).
 
 ### Backend
 * **Framework:** FastAPI (Python 3.11) with async support for Server-Sent Events (SSE) streaming.
-* **AI & LLM:** Google Gemini (`gemini-1.5-flash` for generation, `text-embedding-004` for embeddings) via `google-generativeai`.
+* **AI & LLM:** Google Gemini (`gemini-2.5-flash` for generation, `gemini-embedding-001` for embeddings) via `google-generativeai`.
 * **RAG Pipeline:** LangChain, ChromaDB (local persistence, upgrading to pgvector), and PyGithub for repo ingestion.
 * **Database & ORM:** PostgreSQL (via Supabase) with async SQLAlchemy and Alembic migrations.
 * **Caching & Limits:** Upstash Redis (response caching & rate limiting).
@@ -142,16 +142,3 @@ npm run dev
 ```
 
 ---
-
-## 🗺️ Roadmap
-
-* **Stage 1:** Scaffold & Infrastructure (Routing, DB Schema, FastAPI/Next.js shells)
-* **Stage 2:** LLD/HLD Classifier + MCQ Clarification Interface
-* **Stage 3:** RAG Pipeline (GitHub ingestion, ChromaDB, chunking/embedding)
-* **Stage 4:** Generation Pipeline (Arch diagram, Capacity, Data model, Stack)
-* **Stage 5:** Claude.ai UI (Pixel-perfect sidebar, chat, and artifact panel parity)
-* **Stage 6:** Export, Sharing & Cost Optimization (PDF generation, rate limits)
-
-```
-
-```
